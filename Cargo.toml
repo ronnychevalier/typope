@@ -1,0 +1,73 @@
+[package]
+name = "orthotypos"
+edition = "2021"
+description = "Source code orthotypography checker"
+publish = false
+
+[features]
+default = ["lang-all"]
+lang-all = [
+    "lang-c",
+    "lang-cpp",
+    "lang-go",
+    "lang-json",
+    "lang-python",
+    "lang-rust",
+    "lang-toml",
+    "lang-yaml",
+
+]
+lang-c = ["dep:tree-sitter-c"]
+lang-cpp = ["dep:tree-sitter-cpp"]
+lang-go = ["dep:tree-sitter-go"]
+lang-json = ["dep:tree-sitter-json"]
+lang-python = ["dep:tree-sitter-python"]
+lang-rust = ["dep:tree-sitter-rust"]
+lang-toml = ["dep:tree-sitter-toml-ng"]
+lang-yaml = ["dep:tree-sitter-yaml"]
+
+[dependencies]
+anyhow = "1.0.86"
+ignore = "0.4.22"
+miette = { version = "7.2.0", features = ["fancy"] }
+thiserror = "1.0.61"
+tree-sitter = "0.22.6"
+tree-sitter-c = { version = "0.21.4", optional = true }
+tree-sitter-cpp = { version = "0.22.2", optional = true }
+tree-sitter-go = { version = "0.21.0", optional = true }
+tree-sitter-json = { version = "0.21.0", optional = true }
+tree-sitter-python = { version = "0.21.0", optional = true }
+tree-sitter-rust = { version = "0.21.2", optional = true }
+tree-sitter-toml-ng = { version = "0.6.0", optional = true }
+tree-sitter-yaml = { version = "0.6.1", optional = true }
+winnow = "0.6.13"
+
+[lints.rust]
+trivial_numeric_casts = "warn"
+improper_ctypes = "warn"
+improper_ctypes_definitions = "warn"
+non_ascii_idents = "warn"
+rust_2018_idioms = "warn"
+rust_2024_compatibility = "warn"
+single_use_lifetimes = "warn"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+indexing_slicing = "warn"
+panic_in_result_fn = "warn"
+dbg_macro = "warn"
+panic = "warn"
+todo = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+unimplemented = "warn"
+cast_lossless = "warn"
+trailing_empty_array = "warn"
+as_ptr_cast_mut = "warn"
+lint_groups_priority = "allow"
+
+[profile.release]
+lto = true
+strip = "symbols"
+panic = "abort"
