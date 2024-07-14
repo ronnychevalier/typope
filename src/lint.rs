@@ -21,7 +21,10 @@ pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
 
 static VALID_KINDS: &[&str] = &[
     "inline",
-    "line_comment",
+    // "line_comment",
+    // "block_comment",
+    // "inner_doc_comment_marker",
+    // "outer_doc_comment_marker",
     "string_content",
     "string",
     "interpreted_string_literal",
@@ -262,6 +265,26 @@ mod tests {
         let rust = r#"
         fn regex() -> &str {
             r"a ?regex.that ?match ?something ?"
+        }
+        "#;
+        let linter = Linter::new(&language, rust.as_bytes().to_vec(), "file.rs").unwrap();
+
+        let typos = linter.iter().collect::<Vec<_>>();
+        assert!(typos.is_empty());
+    }
+
+    #[test]
+    fn typo_rust_doctest() {
+        let language = tree_sitter_rust::language();
+        let rust = r#"
+        /// Doc comment
+        ///
+        /// The example below should not trigger a warning since this is code:
+        /// ```
+        /// let english_words : u8 = 1;
+        /// ```
+        fn func() -> bool {
+            true
         }
         "#;
         let linter = Linter::new(&language, rust.as_bytes().to_vec(), "file.rs").unwrap();
