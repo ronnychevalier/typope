@@ -118,6 +118,18 @@ impl Iterator for Iter<'_> {
             if node.byte_range().len() <= 3 {
                 continue;
             }
+
+            // Specific case for Rust to avoid linting raw strings (`r"this is a raw string"`) and creating false positives.
+            // TODO: should be handled differently
+            if kind == "string_content"
+                && node
+                    .parent()
+                    .map(|parent| parent.kind() == "raw_string_literal")
+                    .unwrap_or(false)
+            {
+                continue;
+            }
+
             let Some(string) = self.source.inner().get(node.byte_range()) else {
                 continue;
             };
@@ -229,5 +241,19 @@ mod tests {
             "orthotypos::space-before-punctuation-mark"
         );
         assert_eq!(typo.span(), (141, 2).into());
+    }
+
+    #[test]
+    fn typo_rust_rawstring() {
+        let language = tree_sitter_rust::language();
+        let rust = r#"
+        fn regex() -> &str {
+            r"a ?regex.that ?match ?something ?"
+        }
+        "#;
+        let linter = Linter::new(&language, rust.as_bytes().to_vec(), "file.rs").unwrap();
+
+        let typos = linter.iter().collect::<Vec<_>>();
+        assert!(typos.is_empty());
     }
 }
