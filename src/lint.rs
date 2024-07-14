@@ -20,6 +20,7 @@ pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
 }
 
 static VALID_KINDS: &[&str] = &[
+    "inline",
     "line_comment",
     "string_content",
     "string",

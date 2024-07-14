@@ -50,6 +50,8 @@ static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Language>> = Lazy::new(|
     map.insert(OsStr::new("yml"), tree_sitter_yaml::language());
     #[cfg(feature = "lang-json")]
     map.insert(OsStr::new("json"), tree_sitter_json::language());
+    #[cfg(feature = "lang-markdown")]
+    map.insert(OsStr::new("md"), tree_sitter_md::language());
 
     map
 });
