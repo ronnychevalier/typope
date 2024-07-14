@@ -62,7 +62,7 @@ impl Typo for TypoSpaceBeforePunctuationMarks {
 pub struct SpaceBeforePunctuationMarks;
 
 impl Lint for SpaceBeforePunctuationMarks {
-    fn check(s: &[u8]) -> Vec<Box<dyn Typo>> {
+    fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>> {
         fn space_before_colon<'s>(
             input: &mut Located<&'s [u8]>,
         ) -> PResult<char, InputError<Located<&'s [u8]>>> {
@@ -142,18 +142,18 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert!(SpaceBeforePunctuationMarks::check(b"").is_empty());
+        assert!(SpaceBeforePunctuationMarks.check(br"").is_empty());
     }
 
     #[test]
     fn space_after_colon() {
-        let typos = SpaceBeforePunctuationMarks::check(b"test: foobar");
+        let typos = SpaceBeforePunctuationMarks.check(br"test: foobar");
         assert!(typos.is_empty());
     }
 
     #[test]
     fn typo_colon() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"test : foobar");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"test : foobar");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 2).into());
         assert!(typos.is_empty());
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn typo_question_mark() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest ? foobar");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest ? foobar");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 2).into());
         assert!(typos.is_empty());
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn typo_exclamation_mark() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest ! barfoobar");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest ! barfoobar");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 2).into());
         assert!(typos.is_empty());
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn typo_exclamation_mark_repeated() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest !!!! barfoobar");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest !!!! barfoobar");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 2).into());
         assert!(typos.is_empty());
@@ -185,22 +185,24 @@ mod tests {
 
     #[test]
     fn typo_neq() {
-        assert!(SpaceBeforePunctuationMarks::check(b"maybe 0 != 1?").is_empty());
+        assert!(SpaceBeforePunctuationMarks
+            .check(br"maybe 0 != 1?")
+            .is_empty());
     }
 
     #[test]
     fn typo_before_end_of_line() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest !");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest !");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 2).into());
         assert!(typos.is_empty());
 
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest ?");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest ?");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 2).into());
         assert!(typos.is_empty());
 
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest :");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest :");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 2).into());
         assert!(typos.is_empty());
@@ -208,7 +210,7 @@ mod tests {
 
     #[test]
     fn multiple_typos() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"footest ! barfoobar : oh no ?");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest ! barfoobar : oh no ?");
 
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (27, 2).into());
@@ -222,7 +224,7 @@ mod tests {
 
     #[test]
     fn typo_colon_multiple_spaces() {
-        let mut typos = SpaceBeforePunctuationMarks::check(b"test  : foobar");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"test  : foobar");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 3).into());
         assert!(typos.is_empty());
@@ -230,24 +232,30 @@ mod tests {
 
     #[test]
     fn typo_rust_sized() {
-        let typos = SpaceBeforePunctuationMarks::check(b"test: ?Sized foobar");
+        let typos = SpaceBeforePunctuationMarks.check(br"test: ?Sized foobar");
         assert!(typos.is_empty());
     }
 
     #[test]
     fn emoji() {
-        assert!(SpaceBeforePunctuationMarks::check(b":waving_hand:").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b"footest :fire: bar").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b"foobar :)").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b":D").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b" :> ").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b"foo :'( bar").is_empty());
+        assert!(SpaceBeforePunctuationMarks
+            .check(br":waving_hand:")
+            .is_empty());
+        assert!(SpaceBeforePunctuationMarks
+            .check(br"footest :fire: bar")
+            .is_empty());
+        assert!(SpaceBeforePunctuationMarks.check(br"foobar :)").is_empty());
+        assert!(SpaceBeforePunctuationMarks.check(br":D").is_empty());
+        assert!(SpaceBeforePunctuationMarks.check(br" :> ").is_empty());
+        assert!(SpaceBeforePunctuationMarks
+            .check(br"foo :'( bar")
+            .is_empty());
     }
 
     #[test]
     fn typo_source() {
-        let source = "\"test  : foobar\"";
-        let mut typos = SpaceBeforePunctuationMarks::check(source.trim_matches('"').as_bytes());
+        let source = r#""test  : foobar""#;
+        let mut typos = SpaceBeforePunctuationMarks.check(source.trim_matches('"').as_bytes());
         let mut typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 3).into());
         let source = SharedSource::new("fake.rs", source.to_owned().into_bytes());
@@ -258,17 +266,21 @@ mod tests {
 
     #[test]
     fn interrobang() {
-        assert!(SpaceBeforePunctuationMarks::check("test‽".as_bytes()).is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b"test?!").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check(b"test!?").is_empty());
-        assert!(SpaceBeforePunctuationMarks::check("test⸘".as_bytes()).is_empty());
+        assert!(SpaceBeforePunctuationMarks
+            .check(r"test‽".as_bytes())
+            .is_empty());
+        assert!(SpaceBeforePunctuationMarks.check(br"test?!").is_empty());
+        assert!(SpaceBeforePunctuationMarks.check(br"test!?").is_empty());
+        assert!(SpaceBeforePunctuationMarks
+            .check(r"test⸘".as_bytes())
+            .is_empty());
 
-        let mut typos = SpaceBeforePunctuationMarks::check("test ‽".as_bytes());
+        let mut typos = SpaceBeforePunctuationMarks.check(r"test ‽".as_bytes());
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 4).into());
         assert!(typos.is_empty());
 
-        let mut typos = SpaceBeforePunctuationMarks::check("test ?! abc ⸘".as_bytes());
+        let mut typos = SpaceBeforePunctuationMarks.check(r"test ?! abc ⸘".as_bytes());
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (11, 4).into());
         let typo = typos.pop().unwrap();

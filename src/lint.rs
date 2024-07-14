@@ -11,7 +11,7 @@ pub use self::space_before::SpaceBeforePunctuationMarks;
 use crate::tree::PreorderTraversal;
 
 pub trait Lint {
-    fn check(s: &[u8]) -> Vec<Box<dyn Typo>>;
+    fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>>;
 }
 
 pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
@@ -31,6 +31,7 @@ static VALID_KINDS: &[&str] = &[
 pub struct Linter {
     tree: Tree,
     source: SharedSource,
+    rules: Vec<Box<dyn Lint>>,
 }
 
 impl Linter {
@@ -47,7 +48,13 @@ impl Linter {
         };
         let source = SharedSource::new(source_name, source_content);
 
-        Ok(Self { tree, source })
+        let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Lint>];
+
+        Ok(Self {
+            tree,
+            source,
+            rules,
+        })
     }
 
     /// Returns an iterator over the typos found in the source
@@ -85,6 +92,7 @@ pub struct Iter<'t> {
     traversal: PreorderTraversal<'t>,
     source: SharedSource,
     typos: Option<Box<dyn Iterator<Item = Box<dyn Typo>>>>,
+    rules: &'t [Box<dyn Lint>],
 }
 
 impl<'t> Iter<'t> {
@@ -93,6 +101,7 @@ impl<'t> Iter<'t> {
             traversal: PreorderTraversal::from(linter.tree.walk()),
             source: linter.source.clone(),
             typos: None,
+            rules: &linter.rules,
         }
     }
 }
@@ -129,14 +138,17 @@ impl Iterator for Iter<'_> {
             {
                 continue;
             }
-
             let Some(string) = self.source.inner().get(node.byte_range()) else {
                 continue;
             };
 
             let offset = node.start_byte();
-            let typos = SpaceBeforePunctuationMarks::check(string);
             let source = self.source.clone();
+            let typos = self
+                .rules
+                .iter()
+                .flat_map(|rule| rule.check(string))
+                .collect::<Vec<_>>();
             self.typos = Some(Box::new(typos.into_iter().map(move |mut typo| {
                 typo.with_source(source.clone(), offset);
                 typo
