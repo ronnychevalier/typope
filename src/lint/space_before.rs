@@ -18,6 +18,12 @@ use super::{Lint, Typo};
 /// In English typography, one must not put a space before a colon (`:`),
 /// a semicolon (`;`), a question mark (`?`), an exclamation mark (`!`),
 /// or an interrobang (`‽`).
+///
+/// # Examples
+///
+/// Here is a list of mistakes that trigger this rule:
+/// - `Oh no !`, should be `Oh no!`
+/// - `here is a list of things :`, should be `here is a list of things:`
 #[derive(Error, Debug, Diagnostic)]
 #[error("In English typography there is no space before a punctuation mark")]
 #[diagnostic(code("orthotypos::space-before-punctuation-mark"), url(docsrs))]
