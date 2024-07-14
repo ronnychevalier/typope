@@ -81,13 +81,25 @@ impl Lint for SpaceBeforePunctuationMarks {
             Ok(exclamation_mark)
         }
 
+        fn space_before_question_mark<'s>(
+            input: &mut Located<&'s [u8]>,
+        ) -> PResult<char, InputError<Located<&'s [u8]>>> {
+            let question_mark = preceded(space1, '?').parse_next(input)?;
+
+            // Do not mark strings like ` ?Sized` as a typo: it has a meaning in Rust
+            not("Sized").parse_next(input)?;
+
+            Ok(question_mark)
+        }
+
         fn space_before_punctuation<'s>(
             input: &mut Located<&'s [u8]>,
         ) -> PResult<char, InputError<Located<&'s [u8]>>> {
             let punctuation_mark = alt((
                 space_before_colon,
                 space_before_exclamation_mark,
-                preceded(space1, alt(('?', '‽', '⸘'))),
+                space_before_question_mark,
+                preceded(space1, alt(('‽', '⸘'))),
             ))
             .parse_next(input)?;
 
@@ -207,6 +219,12 @@ mod tests {
         let mut typos = SpaceBeforePunctuationMarks::check(b"test  : foobar");
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 3).into());
+        assert!(typos.is_empty());
+    }
+
+    #[test]
+    fn typo_rust_sized() {
+        let typos = SpaceBeforePunctuationMarks::check(b"test: ?Sized foobar");
         assert!(typos.is_empty());
     }
 
