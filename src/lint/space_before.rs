@@ -83,6 +83,8 @@ impl Lint for SpaceBeforePunctuationMarks {
 
             // Do not mark such a string `x != y` as a typo
             not('=').parse_next(input)?;
+            // Do not mark strings like ` !Send` as a typo: it has a meaning in Rust
+            not(alt(("Send", "Sync"))).parse_next(input)?;
 
             Ok(exclamation_mark)
         }
