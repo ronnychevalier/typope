@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs::Metadata;
 use std::ops::Deref;
 use std::sync::OnceLock;
+
+use clap::Parser;
 
 use tree_sitter::Language;
 
 use orthotypos::lint::Linter;
+
+mod cli;
 
 struct Lazy<T> {
     cell: OnceLock<T>,
@@ -57,16 +60,13 @@ static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Language>> = Lazy::new(|
 });
 
 fn main() -> anyhow::Result<()> {
-    for file in ignore::Walk::new(".")
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .metadata()
-                .as_ref()
-                .map(Metadata::is_file)
-                .unwrap_or(false)
-        })
-    {
+    let args = crate::cli::Args::parse();
+
+    let report_handler = args.format().into_error_hook();
+    miette::set_hook(report_handler)?;
+
+    let mut typo_found = false;
+    for file in args.to_walk() {
         let extension = file.path().extension().unwrap_or_default();
         let Some(language) = EXTENSION_LANGUAGE.get(extension) else {
             continue;
@@ -78,8 +78,13 @@ fn main() -> anyhow::Result<()> {
         for typo in &linter {
             let typo: miette::Report = typo.into();
             eprintln!("{typo:?}");
+            typo_found = true;
         }
     }
 
-    Ok(())
+    if typo_found {
+        std::process::exit(1);
+    } else {
+        Ok(())
+    }
 }
