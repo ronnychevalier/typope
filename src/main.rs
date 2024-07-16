@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::io::Write;
 use std::ops::Deref;
 use std::sync::OnceLock;
+
+use anyhow::Context;
 
 use clap::Parser;
 
 use tree_sitter::Language;
 
+use orthotypos::config::Config;
 use orthotypos::lint::Linter;
 
 mod cli;
@@ -65,8 +69,18 @@ fn main() -> anyhow::Result<()> {
     let report_handler = args.format().into_error_hook();
     miette::set_hook(report_handler)?;
 
+    let cwd = std::env::current_dir().context("no current working directory")?;
+    let mut config = Config::default();
+    for ancestor in cwd.ancestors() {
+        if let Some(derived) = Config::from_dir(ancestor)? {
+            config.update(&derived);
+            break;
+        }
+    }
+    config.update(&args.to_config());
+
     let mut typo_found = false;
-    for file in args.to_walk() {
+    for file in args.to_walk(&config)? {
         let extension = file.path().extension().unwrap_or_default();
         let Some(language) = EXTENSION_LANGUAGE.get(extension) else {
             continue;
@@ -75,9 +89,10 @@ fn main() -> anyhow::Result<()> {
         let source_content = std::fs::read(file.path())?;
         let linter = Linter::new(language, source_content, &file.path().to_string_lossy())?;
 
+        let mut stderr = std::io::stderr().lock();
         for typo in &linter {
             let typo: miette::Report = typo.into();
-            eprintln!("{typo:?}");
+            writeln!(stderr, "{typo:?}")?;
             typo_found = true;
         }
     }

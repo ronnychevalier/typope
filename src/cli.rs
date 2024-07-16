@@ -1,8 +1,10 @@
 use std::fs::Metadata;
-use std::path::Path;
 use std::path::PathBuf;
 
-use ignore::{DirEntry, WalkBuilder};
+use ignore::DirEntry;
+
+use orthotypos::config;
+use orthotypos::config::Config;
 
 #[derive(Copy, Clone, PartialEq, Eq, clap::ValueEnum, Default)]
 pub enum Format {
@@ -39,8 +41,53 @@ pub(crate) struct Args {
     walk: WalkArgs,
 }
 
+impl Args {
+    pub fn to_walk<'a>(
+        &'a self,
+        config: &'a Config,
+    ) -> anyhow::Result<impl Iterator<Item = DirEntry> + 'a> {
+        let mut overrides = ignore::overrides::OverrideBuilder::new(".");
+        for pattern in &config.files.extend_exclude {
+            overrides.add(&format!("!{}", pattern))?;
+        }
+        let overrides = overrides.build()?;
+
+        Ok(self.path.iter().flat_map(move |path| {
+            let mut walk = config.to_walk_builder(path);
+            if self.sort {
+                walk.sort_by_file_name(|a, b| a.cmp(b));
+            }
+            if !config.files.extend_exclude.is_empty() {
+                walk.overrides(overrides.clone());
+            }
+            walk.build().filter_map(Result::ok).filter(|entry| {
+                entry
+                    .metadata()
+                    .as_ref()
+                    .map(Metadata::is_file)
+                    .unwrap_or(false)
+            })
+        }))
+    }
+
+    pub fn format(&self) -> Format {
+        self.format
+    }
+
+    pub fn to_config(&self) -> config::Config {
+        config::Config {
+            files: self.walk.to_config(),
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(clap::Args)]
 struct WalkArgs {
+    /// Ignore files and directories matching the glob.
+    #[arg(long, value_name = "GLOB")]
+    exclude: Vec<String>,
+
     /// Search hidden files and directories
     #[arg(long)]
     hidden: bool,
@@ -66,41 +113,16 @@ struct WalkArgs {
     no_ignore_vcs: bool,
 }
 
-impl Args {
-    pub fn to_walk_builder(&self, path: &Path) -> WalkBuilder {
-        let mut walk = ignore::WalkBuilder::new(path);
-        walk.skip_stdout(true)
-            .git_global(
-                !(self.walk.no_ignore_global || self.walk.no_ignore_vcs || self.walk.no_ignore),
-            )
-            .git_ignore(!self.walk.no_ignore_vcs || self.walk.no_ignore)
-            .git_exclude(!self.walk.no_ignore_vcs || self.walk.no_ignore)
-            .hidden(self.walk.hidden)
-            .parents(!(self.walk.no_ignore_parent || self.walk.no_ignore))
-            .ignore(!(self.walk.no_ignore_dot || self.walk.no_ignore));
-        if self.sort {
-            walk.sort_by_file_name(|a, b| a.cmp(b));
+impl WalkArgs {
+    pub fn to_config(&self) -> config::Walk {
+        config::Walk {
+            extend_exclude: self.exclude.clone(),
+            ignore_hidden: Some(self.hidden),
+            ignore_files: Some(!self.no_ignore),
+            ignore_dot: Some(!self.no_ignore_dot),
+            ignore_vcs: Some(!self.no_ignore_vcs),
+            ignore_global: Some(!self.no_ignore_global),
+            ignore_parent: Some(!self.no_ignore_parent),
         }
-
-        walk
-    }
-
-    pub fn to_walk(&self) -> impl Iterator<Item = DirEntry> + '_ {
-        self.path.iter().flat_map(|path| {
-            self.to_walk_builder(path)
-                .build()
-                .filter_map(Result::ok)
-                .filter(|entry| {
-                    entry
-                        .metadata()
-                        .as_ref()
-                        .map(Metadata::is_file)
-                        .unwrap_or(false)
-                })
-        })
-    }
-
-    pub fn format(&self) -> Format {
-        self.format
     }
 }
