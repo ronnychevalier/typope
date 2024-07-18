@@ -15,7 +15,7 @@ use super::{Lint, Typo};
 
 /// A space *before* a punctuation mark has been detected.
 ///
-/// In English typography, one must not put a space before a colon (`:`),
+/// In English and German typography, one must not put a space before a colon (`:`),
 /// a semicolon (`;`), a question mark (`?`), an exclamation mark (`!`),
 /// or an interrobang (`‽`).
 ///

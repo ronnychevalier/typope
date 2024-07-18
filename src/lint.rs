@@ -1,11 +1,7 @@
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::OnceLock;
 
-use tree_sitter::{Language, Parser, Tree};
+use tree_sitter::{Parser, Tree};
 
 use miette::{MietteError, NamedSource, SourceCode, SourceSpan, SpanContents};
 
@@ -13,6 +9,7 @@ mod space_before;
 
 pub use self::space_before::SpaceBeforePunctuationMarks;
 
+use crate::lang::Lang;
 use crate::tree::PreorderTraversal;
 
 pub trait Lint {
@@ -24,70 +21,10 @@ pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
     fn with_source(&mut self, src: SharedSource, offset: usize);
 }
 
-static VALID_KINDS: &[&str] = &[
-    "inline",
-    // "line_comment",
-    // "block_comment",
-    // "inner_doc_comment_marker",
-    // "outer_doc_comment_marker",
-    "string_content",
-    "string",
-    "interpreted_string_literal",
-    "string_scalar",
-    "double_quote_scalar",
-];
-
-struct Lazy<T> {
-    cell: OnceLock<T>,
-    init: fn() -> T,
-}
-
-impl<T> Lazy<T> {
-    pub const fn new(init: fn() -> T) -> Self {
-        Self {
-            cell: OnceLock::new(),
-            init,
-        }
-    }
-}
-
-impl<T> Deref for Lazy<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &'_ T {
-        self.cell.get_or_init(self.init)
-    }
-}
-
-static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Language>> = Lazy::new(|| {
-    let mut map = HashMap::new();
-
-    #[cfg(feature = "lang-rust")]
-    map.insert(OsStr::new("rs"), tree_sitter_rust::language());
-    #[cfg(feature = "lang-cpp")]
-    map.insert(OsStr::new("cpp"), tree_sitter_cpp::language());
-    #[cfg(feature = "lang-c")]
-    map.insert(OsStr::new("c"), tree_sitter_c::language());
-    #[cfg(feature = "lang-go")]
-    map.insert(OsStr::new("go"), tree_sitter_go::language());
-    #[cfg(feature = "lang-python")]
-    map.insert(OsStr::new("py"), tree_sitter_python::language());
-    #[cfg(feature = "lang-toml")]
-    map.insert(OsStr::new("toml"), tree_sitter_toml_ng::language());
-    #[cfg(feature = "lang-yaml")]
-    map.insert(OsStr::new("yml"), tree_sitter_yaml::language());
-    #[cfg(feature = "lang-json")]
-    map.insert(OsStr::new("json"), tree_sitter_json::language());
-    #[cfg(feature = "lang-markdown")]
-    map.insert(OsStr::new("md"), tree_sitter_md::language());
-
-    map
-});
-
 pub struct Linter {
     tree: Tree,
     source: SharedSource,
+    lang: Arc<Lang>,
     rules: Vec<Box<dyn Lint>>,
 }
 
@@ -95,7 +32,7 @@ impl Linter {
     pub fn from_path(source: impl AsRef<Path>) -> anyhow::Result<Option<Self>> {
         let path = source.as_ref();
         let extension = path.extension().unwrap_or_default();
-        let Some(language) = EXTENSION_LANGUAGE.get(extension) else {
+        let Some(language) = Lang::from_extension(extension) else {
             // TODO: parse the file as a text file without tree-sitter
             return Ok(None);
         };
@@ -107,12 +44,12 @@ impl Linter {
     }
 
     fn new(
-        language: &Language,
+        lang: Arc<Lang>,
         source_content: impl Into<Vec<u8>>,
         source_name: impl AsRef<str>,
     ) -> anyhow::Result<Self> {
         let mut parser = Parser::new();
-        parser.set_language(language)?;
+        parser.set_language(lang.language())?;
         let source_content = source_content.into();
         let Some(tree) = parser.parse(&source_content, None) else {
             anyhow::bail!("Invalid language");
@@ -122,6 +59,7 @@ impl Linter {
         let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Lint>];
 
         Ok(Self {
+            lang,
             tree,
             source,
             rules,
@@ -132,10 +70,10 @@ impl Linter {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// # use orthotypos::lint::Linter;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let linter = Linter::new(&tree_sitter_rust::language(), b"...", "file.rs")?;
+    /// let Some(linter) = Linter::from_path("file.rs")? else { return Ok(()); };
     /// for typo in &linter {
     ///     let typo: miette::Report = typo.into();
     ///     eprintln!("{typo:?}");
@@ -162,6 +100,7 @@ impl<'t> IntoIterator for &'t Linter {
 /// Iterator over the typos found in a file
 pub struct Iter<'t> {
     traversal: PreorderTraversal<'t>,
+    lang: &'t Lang,
     source: SharedSource,
     typos: Option<Box<dyn Iterator<Item = Box<dyn Typo>>>>,
     rules: &'t [Box<dyn Lint>],
@@ -174,6 +113,7 @@ impl<'t> Iter<'t> {
             source: linter.source.clone(),
             typos: None,
             rules: &linter.rules,
+            lang: linter.lang.as_ref(),
         }
     }
 }
@@ -193,7 +133,7 @@ impl Iterator for Iter<'_> {
 
             let node = self.traversal.next()?;
             let kind = node.kind();
-            if !VALID_KINDS.contains(&kind) {
+            if !self.lang.tree_sitter_types().contains(&kind) {
                 continue;
             }
             if node.byte_range().len() <= 3 {
@@ -304,18 +244,20 @@ impl miette::Diagnostic for Box<dyn Typo> {
 
 #[cfg(test)]
 mod tests {
+    use crate::lint::Lang;
+
     use super::Linter;
 
+    #[cfg(feature = "lang-rust")]
     #[test]
     fn typo_rust_string() {
-        let language = tree_sitter_rust::language();
         let rust = r#"
         /// Doc comment
         fn func() -> anyhow::Result<()> {
             anyhow::bail!("failed to do something for the following reason : foobar foo");
         }
         "#;
-        let linter = Linter::new(&language, rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let mut typos = linter.iter().collect::<Vec<_>>();
         assert_eq!(typos.len(), 1);
@@ -327,23 +269,23 @@ mod tests {
         assert_eq!(typo.span(), (141, 2).into());
     }
 
+    #[cfg(feature = "lang-rust")]
     #[test]
     fn typo_rust_rawstring() {
-        let language = tree_sitter_rust::language();
         let rust = r#"
         fn regex() -> &str {
             r"a ?regex.that ?match ?something ?"
         }
         "#;
-        let linter = Linter::new(&language, rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let typos = linter.iter().collect::<Vec<_>>();
         assert!(typos.is_empty());
     }
 
+    #[cfg(feature = "lang-rust")]
     #[test]
     fn typo_rust_doctest() {
-        let language = tree_sitter_rust::language();
         let rust = r#"
         /// Doc comment
         ///
@@ -355,7 +297,7 @@ mod tests {
             true
         }
         "#;
-        let linter = Linter::new(&language, rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let typos = linter.iter().collect::<Vec<_>>();
         assert!(typos.is_empty());
