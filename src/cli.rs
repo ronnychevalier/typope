@@ -91,38 +91,82 @@ struct WalkArgs {
     /// Search hidden files and directories
     #[arg(long)]
     hidden: bool,
+    #[arg(long, overrides_with("hidden"), hide = true)]
+    no_hidden: bool,
 
     /// Don't respect ignore files
     #[arg(long)]
     no_ignore: bool,
+    #[arg(long, overrides_with("no_ignore"), hide = true)]
+    ignore: bool,
 
     /// Don't respect .ignore files
     #[arg(long)]
     no_ignore_dot: bool,
+    #[arg(long, overrides_with("no_ignore_dot"), hide = true)]
+    ignore_dot: bool,
 
     /// Don't respect global ignore files
     #[arg(long)]
     no_ignore_global: bool,
+    #[arg(long, overrides_with("no_ignore_global"), hide = true)]
+    ignore_global: bool,
 
     /// Don't respect ignore files in parent directories
     #[arg(long)]
     no_ignore_parent: bool,
+    #[arg(long, overrides_with("no_ignore_parent"), hide = true)]
+    ignore_parent: bool,
 
     /// Don't respect ignore files in vcs directories
     #[arg(long)]
     no_ignore_vcs: bool,
+    #[arg(long, overrides_with("no_ignore_vcs"), hide = true)]
+    ignore_vcs: bool,
 }
 
 impl WalkArgs {
     pub fn to_config(&self) -> config::Walk {
         config::Walk {
             extend_exclude: self.exclude.clone(),
-            ignore_hidden: Some(self.hidden),
-            ignore_files: Some(!self.no_ignore),
-            ignore_dot: Some(!self.no_ignore_dot),
-            ignore_vcs: Some(!self.no_ignore_vcs),
-            ignore_global: Some(!self.no_ignore_global),
-            ignore_parent: Some(!self.no_ignore_parent),
+            ignore_hidden: self.ignore_hidden(),
+            ignore_files: self.ignore_files(),
+            ignore_dot: self.ignore_dot(),
+            ignore_vcs: self.ignore_vcs(),
+            ignore_global: self.ignore_global(),
+            ignore_parent: self.ignore_parent(),
         }
+    }
+
+    fn ignore_hidden(&self) -> Option<bool> {
+        resolve_bool_arg(self.no_hidden, self.hidden)
+    }
+
+    fn ignore_files(&self) -> Option<bool> {
+        resolve_bool_arg(self.ignore, self.no_ignore)
+    }
+
+    fn ignore_dot(&self) -> Option<bool> {
+        resolve_bool_arg(self.ignore_dot, self.no_ignore_dot)
+    }
+
+    fn ignore_vcs(&self) -> Option<bool> {
+        resolve_bool_arg(self.ignore_vcs, self.no_ignore_vcs)
+    }
+
+    fn ignore_global(&self) -> Option<bool> {
+        resolve_bool_arg(self.ignore_global, self.no_ignore_global)
+    }
+
+    fn ignore_parent(&self) -> Option<bool> {
+        resolve_bool_arg(self.ignore_parent, self.no_ignore_parent)
+    }
+}
+
+fn resolve_bool_arg(yes: bool, no: bool) -> Option<bool> {
+    match (yes, no) {
+        (true, false) => Some(true),
+        (false, true) => Some(false),
+        (_, _) => None,
     }
 }
