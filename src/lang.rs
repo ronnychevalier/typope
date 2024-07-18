@@ -34,7 +34,12 @@ static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Lang>>> = Lazy::new(
     macro_rules! lang {
         ($lang:ident, $feature: literal) => {
             #[cfg(feature = $feature)]
-            map.insert(Lang::$lang().extension(), Arc::new(Lang::$lang()));
+            {
+                let lang = Arc::new(Lang::$lang());
+                for extension in lang.extensions() {
+                    map.insert(OsStr::new(extension), Arc::clone(&lang));
+                }
+            }
         };
     }
 
@@ -53,7 +58,7 @@ static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Lang>>> = Lazy::new(
 
 pub struct Lang {
     language: Language,
-    extension: &'static OsStr,
+    extensions: &'static [&'static str],
     tree_sitter_types: &'static [&'static str],
 }
 
@@ -62,9 +67,8 @@ impl Lang {
         EXTENSION_LANGUAGE.get(extension).map(Arc::clone)
     }
 
-    pub fn extension(&self) -> &'static OsStr {
-        // TODO: should be a list of extensions
-        self.extension
+    pub fn extensions(&self) -> &'static [&'static str] {
+        self.extensions
     }
 
     pub fn language(&self) -> &Language {
@@ -80,7 +84,7 @@ impl Lang {
     pub fn rust() -> Self {
         Self {
             language: tree_sitter_rust::language(),
-            extension: OsStr::new("rs"),
+            extensions: &["rs"],
             tree_sitter_types: &["string_content"],
         }
     }
@@ -89,7 +93,7 @@ impl Lang {
     pub fn cpp() -> Self {
         Self {
             language: tree_sitter_cpp::language(),
-            extension: OsStr::new("cpp"),
+            extensions: &["cpp", "cc", "hpp", "hh"],
             tree_sitter_types: &["string_content"],
         }
     }
@@ -98,7 +102,7 @@ impl Lang {
     pub fn c() -> Self {
         Self {
             language: tree_sitter_c::language(),
-            extension: OsStr::new("c"),
+            extensions: &["c", "h"],
             tree_sitter_types: &["string_content"],
         }
     }
@@ -107,7 +111,7 @@ impl Lang {
     pub fn go() -> Self {
         Self {
             language: tree_sitter_go::language(),
-            extension: OsStr::new("go"),
+            extensions: &["go"],
             tree_sitter_types: &["interpreted_string_literal"],
         }
     }
@@ -116,7 +120,7 @@ impl Lang {
     pub fn python() -> Self {
         Self {
             language: tree_sitter_python::language(),
-            extension: OsStr::new("py"),
+            extensions: &["py"],
             tree_sitter_types: &["string", "concatenated_string"],
         }
     }
@@ -125,7 +129,7 @@ impl Lang {
     pub fn toml() -> Self {
         Self {
             language: tree_sitter_toml_ng::language(),
-            extension: OsStr::new("toml"),
+            extensions: &["toml"],
             tree_sitter_types: &["string"],
         }
     }
@@ -134,7 +138,7 @@ impl Lang {
     pub fn yaml() -> Self {
         Self {
             language: tree_sitter_yaml::language(),
-            extension: OsStr::new("yml"),
+            extensions: &["yml", "yaml"],
             tree_sitter_types: &["string_scalar"],
         }
     }
@@ -143,7 +147,7 @@ impl Lang {
     pub fn json() -> Self {
         Self {
             language: tree_sitter_json::language(),
-            extension: OsStr::new("json"),
+            extensions: &["json"],
             tree_sitter_types: &["string_content"],
         }
     }
@@ -152,7 +156,7 @@ impl Lang {
     pub fn markdown() -> Self {
         Self {
             language: tree_sitter_md::language(),
-            extension: OsStr::new("md"),
+            extensions: &["md"],
             tree_sitter_types: &["inline"],
         }
     }
