@@ -80,6 +80,10 @@ impl Args {
             ..Default::default()
         }
     }
+
+    pub fn sort(&self) -> bool {
+        self.sort
+    }
 }
 
 #[derive(clap::Args)]

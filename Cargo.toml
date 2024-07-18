@@ -37,6 +37,7 @@ clap = { version = "4.5.9", features = ["derive"] }
 ignore = "0.4.22"
 kstring = { version = "2.0.0", features = ["serde"] }
 miette = { version = "7.2.0", features = ["fancy"] }
+rayon = "1.10.0"
 serde = { version = "1.0.204", features = ["derive"] }
 thiserror = "1.0.61"
 toml = "0.8.14"
@@ -67,6 +68,8 @@ expect_used = "warn"
 indexing_slicing = "warn"
 panic_in_result_fn = "warn"
 dbg_macro = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
 panic = "warn"
 todo = "warn"
 unnecessary_safety_comment = "warn"
