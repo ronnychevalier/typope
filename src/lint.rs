@@ -138,9 +138,8 @@ impl Iterator for Iter<'_> {
             }
 
             let offset = node.start_byte();
-            let typos = node
-                .lintable_bytes(self.source.inner())
-                .flat_map(|string| {
+            let typos =
+                node.lintable_bytes(self.source.inner()).flat_map(|string| {
                     let source = self.source.clone();
                     let typos = self.rules.iter().flat_map(|rule| rule.check(string)).map(
                         move |mut typo| {
@@ -150,9 +149,8 @@ impl Iterator for Iter<'_> {
                     );
 
                     Box::new(typos)
-                })
-                .collect::<Vec<_>>();
-            self.typos = typos;
+                });
+            self.typos.extend(typos);
         }
     }
 }
