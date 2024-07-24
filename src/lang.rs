@@ -289,21 +289,26 @@ impl<'t> From<Node<'t>> for LintableNode<'t> {
     }
 }
 
-pub struct ParsedGeneric {
+/// Type that represents a file that has been parsed
+pub trait Parsed {
+    /// Returns an iterator over the strings found in the file based on the language grammar
+    fn strings<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
+}
+
+struct ParsedGeneric {
     tree: Tree,
     tree_sitter_types: &'static [&'static str],
 }
 
 impl Parsed for ParsedGeneric {
-    fn iter<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+    fn strings<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
         Box::new(Iter::new(self))
     }
 }
 
-pub trait Parsed {
-    fn iter<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
-}
-
+/// Generic iterator over the strings found in a file based on the language grammar.
+///
+/// It ignores strings with a length less than or equal to 3.
 pub struct Iter<'t> {
     traversal: PreorderTraversal<'t>,
     tree_sitter_types: &'static [&'static str],

@@ -1,5 +1,6 @@
 use tree_sitter::{Node, Tree, TreeCursor};
 
+/// Traverse a tree with a depth-first search from left to right
 pub struct PreorderTraversal<'a> {
     cursor: TreeCursor<'a>,
     finished: bool,

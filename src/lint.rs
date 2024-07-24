@@ -26,7 +26,7 @@ pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
 
 /// Detects typos in a file
 pub struct Linter {
-    tree: Box<dyn Parsed>,
+    parsed: Box<dyn Parsed>,
     source: SharedSource,
     rules: Vec<Box<dyn Rule>>,
 }
@@ -53,13 +53,13 @@ impl Linter {
         source_name: impl AsRef<str>,
     ) -> anyhow::Result<Self> {
         let source_content = source_content.into();
-        let tree = lang.parse(&source_content)?;
+        let parsed = lang.parse(&source_content)?;
         let source = SharedSource::new(source_name, source_content);
 
         let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Rule>];
 
         Ok(Self {
-            tree,
+            parsed,
             source,
             rules,
         })
@@ -98,7 +98,7 @@ impl<'t> IntoIterator for &'t Linter {
 
 /// Iterator over the typos found in a file
 pub struct Iter<'t> {
-    traversal: Box<dyn Iterator<Item = LintableNode<'t>> + 't>,
+    strings: Box<dyn Iterator<Item = LintableNode<'t>> + 't>,
     source: SharedSource,
     typos: Vec<Box<dyn Typo>>,
     rules: &'t [Box<dyn Rule>],
@@ -107,7 +107,7 @@ pub struct Iter<'t> {
 impl<'t> Iter<'t> {
     fn new(linter: &'t Linter) -> Self {
         Self {
-            traversal: linter.tree.iter(),
+            strings: linter.parsed.strings(),
             source: linter.source.clone(),
             typos: vec![],
             rules: &linter.rules,
@@ -124,7 +124,7 @@ impl Iterator for Iter<'_> {
                 return Some(typo);
             }
 
-            let node = self.traversal.next()?;
+            let node = self.strings.next()?;
             let kind = node.kind();
 
             // Specific case for Rust to avoid linting raw strings (`r"this is a raw string"`) and creating false positives.
