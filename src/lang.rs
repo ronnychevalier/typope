@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 
-use tree_sitter::{Language, Node, Parser, Tree};
+use tree_sitter::{Node, Parser, Tree};
 
 use crate::tree::PreorderTraversal;
 
@@ -33,14 +33,14 @@ impl<T> Deref for Lazy<T> {
     }
 }
 
-static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Lang>>> = Lazy::new(|| {
+static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Language>>> = Lazy::new(|| {
     let mut map = HashMap::new();
 
     macro_rules! lang {
         ($lang:ident, $feature: literal) => {
             #[cfg(feature = $feature)]
             {
-                let lang = Arc::new(Lang::$lang());
+                let lang = Arc::new(Language::$lang());
                 for extension in lang.extensions() {
                     map.insert(OsStr::new(extension), Arc::clone(&lang));
                 }
@@ -63,22 +63,44 @@ static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Lang>>> = Lazy::new(
 
 type CustomParser = Box<dyn Fn(&[u8]) -> anyhow::Result<Box<dyn Parsed>> + Send + Sync>;
 
-pub struct Lang {
-    language: Language,
+/// Parser for a language to find strings based on its grammar
+pub struct Language {
+    language: tree_sitter::Language,
     extensions: &'static [&'static str],
     tree_sitter_types: &'static [&'static str],
     parser: Option<CustomParser>,
 }
 
-impl Lang {
+impl Language {
+    /// Find the language to parse based on a file extension
+    /// # Example
+    ///
+    /// ```
+    /// # use std::ffi::OsStr;
+    /// #
+    /// # use orthotypos::lang::Language;
+    /// assert!(Language::from_extension(OsStr::new("rs")).is_some());
+    /// ```
     pub fn from_extension(extension: &OsStr) -> Option<Arc<Self>> {
         EXTENSION_LANGUAGE.get(extension).map(Arc::clone)
     }
 
+    /// Returns an array of extensions supported by this language
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::ffi::OsStr;
+    /// #
+    /// # use orthotypos::lang::Language;
+    /// let rust = Language::from_extension(OsStr::new("rs")).unwrap();
+    /// assert_eq!(rust.extensions(), &["rs"]);
+    /// ```
     pub fn extensions(&self) -> &'static [&'static str] {
         self.extensions
     }
 
+    /// Parses the content of a file
     pub fn parse(&self, source_content: impl AsRef<[u8]>) -> anyhow::Result<Box<dyn Parsed>> {
         if let Some(parser) = &self.parser {
             Ok(parser(source_content.as_ref())?)
@@ -96,6 +118,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for Rust
     #[cfg(feature = "lang-rust")]
     pub fn rust() -> Self {
         Self {
@@ -106,6 +129,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for C++
     #[cfg(feature = "lang-cpp")]
     pub fn cpp() -> Self {
         Self {
@@ -116,6 +140,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for C
     #[cfg(feature = "lang-c")]
     pub fn c() -> Self {
         Self {
@@ -126,6 +151,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for Go
     #[cfg(feature = "lang-go")]
     pub fn go() -> Self {
         Self {
@@ -136,6 +162,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for Python
     #[cfg(feature = "lang-python")]
     pub fn python() -> Self {
         Self {
@@ -146,6 +173,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for TOML
     #[cfg(feature = "lang-toml")]
     pub fn toml() -> Self {
         Self {
@@ -156,6 +184,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for YAML
     #[cfg(feature = "lang-yaml")]
     pub fn yaml() -> Self {
         Self {
@@ -166,6 +195,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for JSON
     #[cfg(feature = "lang-json")]
     pub fn json() -> Self {
         Self {
@@ -176,6 +206,7 @@ impl Lang {
         }
     }
 
+    /// Creates a language parser for Markdown
     #[cfg(feature = "lang-markdown")]
     pub fn markdown() -> Self {
         markdown::lang()

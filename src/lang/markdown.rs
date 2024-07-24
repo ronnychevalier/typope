@@ -6,12 +6,12 @@ use tree_sitter_md::MarkdownTree;
 
 use crate::tree::PreorderTraversal;
 
-use super::{Lang, LintableNode, Parsed};
+use super::{Language, LintableNode, Parsed};
 
 const TREE_SITTER_TYPES: &[&str] = &["inline"];
 
-pub fn lang() -> Lang {
-    Lang {
+pub fn lang() -> Language {
+    Language {
         language: tree_sitter_md::language(),
         extensions: &["md"],
         tree_sitter_types: TREE_SITTER_TYPES,

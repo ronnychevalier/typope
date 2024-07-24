@@ -7,7 +7,7 @@ mod space_before;
 
 pub use self::space_before::SpaceBeforePunctuationMarks;
 
-use crate::lang::{Lang, LintableNode, Parsed};
+use crate::lang::{Language, LintableNode, Parsed};
 
 pub trait Lint {
     fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>>;
@@ -25,10 +25,11 @@ pub struct Linter {
 }
 
 impl Linter {
+    /// Builds a linter that checks for typos in the file at the given path
     pub fn from_path(source: impl AsRef<Path>) -> anyhow::Result<Option<Self>> {
         let path = source.as_ref();
         let extension = path.extension().unwrap_or_default();
-        let Some(language) = Lang::from_extension(extension) else {
+        let Some(language) = Language::from_extension(extension) else {
             // TODO: parse the file as a text file without tree-sitter
             return Ok(None);
         };
@@ -40,7 +41,7 @@ impl Linter {
     }
 
     fn new(
-        lang: Arc<Lang>,
+        lang: Arc<Language>,
         source_content: impl Into<Vec<u8>>,
         source_name: impl AsRef<str>,
     ) -> anyhow::Result<Self> {
@@ -224,7 +225,7 @@ impl miette::Diagnostic for Box<dyn Typo> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lint::Lang;
+    use crate::lint::Language;
 
     use super::Linter;
 
@@ -237,7 +238,8 @@ mod tests {
             anyhow::bail!("failed to do something for the following reason : foobar foo");
         }
         "#;
-        let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let linter =
+            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let mut typos = linter.iter().collect::<Vec<_>>();
         assert_eq!(typos.len(), 1);
@@ -257,7 +259,8 @@ mod tests {
             r"a ?regex.that ?match ?something ?"
         }
         "#;
-        let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let linter =
+            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let typos = linter.iter().count();
         assert_eq!(typos, 0);
@@ -277,7 +280,8 @@ mod tests {
             true
         }
         "#;
-        let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let linter =
+            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let typos = linter.iter().count();
         assert_eq!(typos, 0);
@@ -290,7 +294,7 @@ mod tests {
 Hello mate `this should not trigger the rule : foobar` abc
         "#;
         let linter = Linter::new(
-            Lang::markdown().into(),
+            Language::markdown().into(),
             markdown.as_bytes().to_vec(),
             "file.md",
         )
