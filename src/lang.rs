@@ -3,7 +3,12 @@ use std::ffi::OsStr;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 
-use tree_sitter::Language;
+use tree_sitter::{Language, Node, Parser, Tree};
+
+use crate::tree::PreorderTraversal;
+
+#[cfg(feature = "lang-markdown")]
+mod markdown;
 
 struct Lazy<T> {
     cell: OnceLock<T>,
@@ -56,10 +61,13 @@ static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Lang>>> = Lazy::new(
     map
 });
 
+type CustomParser = Box<dyn Fn(&[u8]) -> anyhow::Result<Box<dyn Parsed>> + Send + Sync>;
+
 pub struct Lang {
     language: Language,
     extensions: &'static [&'static str],
     tree_sitter_types: &'static [&'static str],
+    parser: Option<CustomParser>,
 }
 
 impl Lang {
@@ -71,13 +79,21 @@ impl Lang {
         self.extensions
     }
 
-    pub fn language(&self) -> &Language {
-        &self.language
-    }
+    pub fn parse(&self, source_content: impl AsRef<[u8]>) -> anyhow::Result<Box<dyn Parsed>> {
+        if let Some(parser) = &self.parser {
+            Ok(parser(source_content.as_ref())?)
+        } else {
+            let mut parser = Parser::new();
+            parser.set_language(&self.language)?;
+            let Some(tree) = parser.parse(source_content, None) else {
+                anyhow::bail!("Invalid language");
+            };
 
-    /// Returns the tree-sitter types that should be parsed
-    pub fn tree_sitter_types(&self) -> &[&str] {
-        self.tree_sitter_types
+            Ok(Box::new(ParsedGeneric {
+                tree,
+                tree_sitter_types: self.tree_sitter_types,
+            }))
+        }
     }
 
     #[cfg(feature = "lang-rust")]
@@ -86,6 +102,7 @@ impl Lang {
             language: tree_sitter_rust::language(),
             extensions: &["rs"],
             tree_sitter_types: &["string_content"],
+            parser: None,
         }
     }
 
@@ -95,6 +112,7 @@ impl Lang {
             language: tree_sitter_cpp::language(),
             extensions: &["cpp", "cc", "hpp", "hh"],
             tree_sitter_types: &["string_content"],
+            parser: None,
         }
     }
 
@@ -104,6 +122,7 @@ impl Lang {
             language: tree_sitter_c::language(),
             extensions: &["c", "h"],
             tree_sitter_types: &["string_content"],
+            parser: None,
         }
     }
 
@@ -113,6 +132,7 @@ impl Lang {
             language: tree_sitter_go::language(),
             extensions: &["go"],
             tree_sitter_types: &["interpreted_string_literal"],
+            parser: None,
         }
     }
 
@@ -122,6 +142,7 @@ impl Lang {
             language: tree_sitter_python::language(),
             extensions: &["py"],
             tree_sitter_types: &["string", "concatenated_string"],
+            parser: None,
         }
     }
 
@@ -131,6 +152,7 @@ impl Lang {
             language: tree_sitter_toml_ng::language(),
             extensions: &["toml"],
             tree_sitter_types: &["string"],
+            parser: None,
         }
     }
 
@@ -140,6 +162,7 @@ impl Lang {
             language: tree_sitter_yaml::language(),
             extensions: &["yml", "yaml"],
             tree_sitter_types: &["string_scalar"],
+            parser: None,
         }
     }
 
@@ -149,15 +172,137 @@ impl Lang {
             language: tree_sitter_json::language(),
             extensions: &["json"],
             tree_sitter_types: &["string_content"],
+            parser: None,
         }
     }
 
     #[cfg(feature = "lang-markdown")]
     pub fn markdown() -> Self {
+        markdown::lang()
+    }
+}
+
+/// Wrapper around a [Node] to make it easier to ignore ranges of bytes based on some children
+pub struct LintableNode<'t> {
+    node: Node<'t>,
+    ignore_nodes: Vec<Node<'t>>,
+}
+
+impl<'t> LintableNode<'t> {
+    /// Selects the children ranges that are ignored
+    pub fn ignore_children_ranges(mut self, f: impl Fn(&Node<'t>) -> bool) -> Self {
+        let mut cursor = self.node.walk();
+        self.ignore_nodes = self.node.children(&mut cursor).filter(f).collect();
+
+        self
+    }
+
+    /// Node's type
+    pub fn kind(&self) -> &'static str {
+        self.node.kind()
+    }
+
+    fn lintable_ranges(&self) -> impl Iterator<Item = std::ops::Range<usize>> + '_ {
+        let mut current_range_start = self.node.byte_range().start;
+        let mut iter = self.ignore_nodes.iter();
+        let mut ended = false;
+        std::iter::from_fn(move || {
+            if ended {
+                return None;
+            }
+
+            if let Some(ignore_node) = iter.next() {
+                let start = ignore_node.start_byte();
+                let end = ignore_node.end_byte();
+                let range = current_range_start..start;
+                current_range_start = end;
+                Some(range)
+            } else {
+                ended = true;
+                Some(current_range_start..self.node.byte_range().end)
+            }
+        })
+    }
+
+    /// Returns an iterator over the bytes of the node that have not been ignored
+    pub fn lintable_bytes<'a, 'b>(&'a self, bytes: &'b [u8]) -> impl Iterator<Item = &'b [u8]> + 'a
+    where
+        'b: 'a,
+    {
+        self.lintable_ranges()
+            .filter_map(move |range| bytes.get(range))
+    }
+
+    /// Byte offset where this node start
+    pub fn start_byte(&self) -> usize {
+        self.node.start_byte()
+    }
+
+    /// Byte range of source code that this node represents
+    pub fn byte_range(&self) -> std::ops::Range<usize> {
+        self.node.byte_range()
+    }
+
+    /// Node's immediate parent
+    pub fn parent(&self) -> Option<Node<'t>> {
+        self.node.parent()
+    }
+}
+
+impl<'t> From<Node<'t>> for LintableNode<'t> {
+    fn from(node: Node<'t>) -> Self {
         Self {
-            language: tree_sitter_md::language(),
-            extensions: &["md"],
-            tree_sitter_types: &["inline"],
+            node,
+            ignore_nodes: Vec::new(),
+        }
+    }
+}
+
+pub struct ParsedGeneric {
+    tree: Tree,
+    tree_sitter_types: &'static [&'static str],
+}
+
+impl Parsed for ParsedGeneric {
+    fn iter<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+        Box::new(Iter::new(self))
+    }
+}
+
+pub trait Parsed {
+    fn iter<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
+}
+
+pub struct Iter<'t> {
+    traversal: PreorderTraversal<'t>,
+    tree_sitter_types: &'static [&'static str],
+}
+
+impl<'t> Iter<'t> {
+    fn new(parsed: &'t ParsedGeneric) -> Self {
+        Self {
+            traversal: PreorderTraversal::from(parsed.tree.walk()),
+            tree_sitter_types: parsed.tree_sitter_types,
+        }
+    }
+}
+
+impl<'t> Iterator for Iter<'t> {
+    type Item = LintableNode<'t>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let node = self.traversal.next().map(LintableNode::from)?;
+            let kind = node.kind();
+            if node.byte_range().len() <= 3 {
+                continue;
+            }
+
+            if !self.tree_sitter_types.contains(&kind) {
+                continue;
+            }
+
+            return Some(node);
         }
     }
 }

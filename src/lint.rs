@@ -1,16 +1,13 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use tree_sitter::{Parser, Tree};
-
 use miette::{MietteError, NamedSource, SourceCode, SourceSpan, SpanContents};
 
 mod space_before;
 
 pub use self::space_before::SpaceBeforePunctuationMarks;
 
-use crate::lang::Lang;
-use crate::tree::PreorderTraversal;
+use crate::lang::{Lang, LintableNode, Parsed};
 
 pub trait Lint {
     fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>>;
@@ -22,9 +19,8 @@ pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
 }
 
 pub struct Linter {
-    tree: Tree,
+    tree: Box<dyn Parsed>,
     source: SharedSource,
-    lang: Arc<Lang>,
     rules: Vec<Box<dyn Lint>>,
 }
 
@@ -48,18 +44,13 @@ impl Linter {
         source_content: impl Into<Vec<u8>>,
         source_name: impl AsRef<str>,
     ) -> anyhow::Result<Self> {
-        let mut parser = Parser::new();
-        parser.set_language(lang.language())?;
         let source_content = source_content.into();
-        let Some(tree) = parser.parse(&source_content, None) else {
-            anyhow::bail!("Invalid language");
-        };
+        let tree = lang.parse(&source_content)?;
         let source = SharedSource::new(source_name, source_content);
 
         let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Lint>];
 
         Ok(Self {
-            lang,
             tree,
             source,
             rules,
@@ -99,21 +90,19 @@ impl<'t> IntoIterator for &'t Linter {
 
 /// Iterator over the typos found in a file
 pub struct Iter<'t> {
-    traversal: PreorderTraversal<'t>,
-    lang: &'t Lang,
+    traversal: Box<dyn Iterator<Item = LintableNode<'t>> + 't>,
     source: SharedSource,
-    typos: Option<Box<dyn Iterator<Item = Box<dyn Typo>>>>,
+    typos: Vec<Box<dyn Typo>>,
     rules: &'t [Box<dyn Lint>],
 }
 
 impl<'t> Iter<'t> {
     fn new(linter: &'t Linter) -> Self {
         Self {
-            traversal: PreorderTraversal::from(linter.tree.walk()),
+            traversal: linter.tree.iter(),
             source: linter.source.clone(),
-            typos: None,
+            typos: vec![],
             rules: &linter.rules,
-            lang: linter.lang.as_ref(),
         }
     }
 }
@@ -123,48 +112,39 @@ impl Iterator for Iter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(typos) = &mut self.typos {
-                if let Some(typo) = typos.next() {
-                    return Some(typo);
-                }
-
-                self.typos = None;
+            if let Some(typo) = self.typos.pop() {
+                return Some(typo);
             }
 
             let node = self.traversal.next()?;
             let kind = node.kind();
-            if !self.lang.tree_sitter_types().contains(&kind) {
-                continue;
-            }
-            if node.byte_range().len() <= 3 {
-                continue;
-            }
 
             // Specific case for Rust to avoid linting raw strings (`r"this is a raw string"`) and creating false positives.
             // TODO: should be handled differently
             if kind == "string_content"
                 && node
                     .parent()
-                    .map(|parent| parent.kind() == "raw_string_literal")
-                    .unwrap_or(false)
+                    .is_some_and(|parent| parent.kind() == "raw_string_literal")
             {
                 continue;
             }
-            let Some(string) = self.source.inner().get(node.byte_range()) else {
-                continue;
-            };
 
             let offset = node.start_byte();
-            let source = self.source.clone();
-            let typos = self
-                .rules
-                .iter()
-                .flat_map(|rule| rule.check(string))
+            let typos = node
+                .lintable_bytes(self.source.inner())
+                .flat_map(|string| {
+                    let source = self.source.clone();
+                    let typos = self.rules.iter().flat_map(|rule| rule.check(string)).map(
+                        move |mut typo| {
+                            typo.with_source(source.clone(), offset);
+                            typo
+                        },
+                    );
+
+                    Box::new(typos)
+                })
                 .collect::<Vec<_>>();
-            self.typos = Some(Box::new(typos.into_iter().map(move |mut typo| {
-                typo.with_source(source.clone(), offset);
-                typo
-            })));
+            self.typos = typos;
         }
     }
 }
@@ -279,8 +259,8 @@ mod tests {
         "#;
         let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
-        let typos = linter.iter().collect::<Vec<_>>();
-        assert!(typos.is_empty());
+        let typos = linter.iter().count();
+        assert_eq!(typos, 0);
     }
 
     #[cfg(feature = "lang-rust")]
@@ -299,7 +279,24 @@ mod tests {
         "#;
         let linter = Linter::new(Lang::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
-        let typos = linter.iter().collect::<Vec<_>>();
-        assert!(typos.is_empty());
+        let typos = linter.iter().count();
+        assert_eq!(typos, 0);
+    }
+
+    #[cfg(feature = "lang-markdown")]
+    #[test]
+    fn typo_markdown_inline() {
+        let markdown = r#"# Hello
+Hello mate `this should not trigger the rule : foobar` abc
+        "#;
+        let linter = Linter::new(
+            Lang::markdown().into(),
+            markdown.as_bytes().to_vec(),
+            "file.md",
+        )
+        .unwrap();
+
+        let typos = linter.iter().count();
+        assert_eq!(typos, 0);
     }
 }
