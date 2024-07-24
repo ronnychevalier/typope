@@ -11,7 +11,7 @@ use winnow::token::{none_of, take};
 use winnow::{Located, PResult, Parser};
 
 use super::SharedSource;
-use super::{Lint, Typo};
+use super::{Rule, Typo};
 
 /// A space *before* a punctuation mark has been detected.
 ///
@@ -59,9 +59,12 @@ impl Typo for TypoSpaceBeforePunctuationMarks {
     }
 }
 
+/// A rule that detects when a space is present *before* a punctuation mark.
+///
+/// See [TypoSpaceBeforePunctuationMarks] for more details.
 pub struct SpaceBeforePunctuationMarks;
 
-impl Lint for SpaceBeforePunctuationMarks {
+impl Rule for SpaceBeforePunctuationMarks {
     fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>> {
         fn space_before_colon<'s>(
             input: &mut Located<&'s [u8]>,
@@ -138,7 +141,7 @@ impl Lint for SpaceBeforePunctuationMarks {
 
 #[cfg(test)]
 mod tests {
-    use crate::lint::{Lint, SharedSource};
+    use crate::lint::{Rule, SharedSource};
 
     use super::SpaceBeforePunctuationMarks;
 

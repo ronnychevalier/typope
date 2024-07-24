@@ -3,25 +3,32 @@ use std::sync::Arc;
 
 use miette::{MietteError, NamedSource, SourceCode, SourceSpan, SpanContents};
 
-mod space_before;
+pub mod space_before;
 
-pub use self::space_before::SpaceBeforePunctuationMarks;
+use self::space_before::SpaceBeforePunctuationMarks;
 
 use crate::lang::{Language, LintableNode, Parsed};
 
-pub trait Lint {
-    fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>>;
+/// Type that represents a rule that checks for typos
+pub trait Rule {
+    /// Returns the typos found by applying this rule to an array of bytes
+    fn check(&self, bytes: &[u8]) -> Vec<Box<dyn Typo>>;
 }
 
+/// Type that represents a typo found
 pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
+    /// Span that identify where the typo is located
     fn span(&self) -> SourceSpan;
+
+    /// Specify within which source the typo has been found
     fn with_source(&mut self, src: SharedSource, offset: usize);
 }
 
+/// Detects typos in a file
 pub struct Linter {
     tree: Box<dyn Parsed>,
     source: SharedSource,
-    rules: Vec<Box<dyn Lint>>,
+    rules: Vec<Box<dyn Rule>>,
 }
 
 impl Linter {
@@ -49,7 +56,7 @@ impl Linter {
         let tree = lang.parse(&source_content)?;
         let source = SharedSource::new(source_name, source_content);
 
-        let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Lint>];
+        let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Rule>];
 
         Ok(Self {
             tree,
@@ -94,7 +101,7 @@ pub struct Iter<'t> {
     traversal: Box<dyn Iterator<Item = LintableNode<'t>> + 't>,
     source: SharedSource,
     typos: Vec<Box<dyn Typo>>,
-    rules: &'t [Box<dyn Lint>],
+    rules: &'t [Box<dyn Rule>],
 }
 
 impl<'t> Iter<'t> {
