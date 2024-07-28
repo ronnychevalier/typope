@@ -36,19 +36,25 @@ pub(crate) struct Args {
     #[arg(default_value = ".")]
     path: Vec<PathBuf>,
 
+    /// Write the current configuration to file with `-` for stdout
+    #[arg(long, value_name = "OUTPUT", group = "mode", help_heading = "Mode")]
+    dump_config: Option<PathBuf>,
+
     /// Sort results
-    #[arg(long)]
+    #[arg(long, help_heading = "Output")]
     sort: bool,
 
     /// Render style for messages
-    #[arg(long, value_enum, ignore_case = true, default_value("long"))]
+    #[arg(
+        long,
+        value_enum,
+        ignore_case = true,
+        default_value("long"),
+        help_heading = "Output"
+    )]
     format: Format,
 
-    /// Write the current configuration to file with `-` for stdout
-    #[arg(long, value_name = "OUTPUT")]
-    dump_config: Option<PathBuf>,
-
-    #[command(flatten)]
+    #[command(flatten, next_help_heading = "Config")]
     walk: WalkArgs,
 }
 
