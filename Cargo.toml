@@ -5,7 +5,7 @@ description = "Source code orthotypography checker"
 publish = false
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-rust-version = "1.79.0"
+rust-version = "1.80.0"
 
 [features]
 default = ["lang-all"]

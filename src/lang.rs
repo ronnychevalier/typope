@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::ops::Deref;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock};
 
 use tree_sitter::{Node, Parser, Tree};
 
@@ -10,30 +9,7 @@ use crate::tree::PreorderTraversal;
 #[cfg(feature = "lang-markdown")]
 mod markdown;
 
-struct Lazy<T> {
-    cell: OnceLock<T>,
-    init: fn() -> T,
-}
-
-impl<T> Lazy<T> {
-    pub const fn new(init: fn() -> T) -> Self {
-        Self {
-            cell: OnceLock::new(),
-            init,
-        }
-    }
-}
-
-impl<T> Deref for Lazy<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &'_ T {
-        self.cell.get_or_init(self.init)
-    }
-}
-
-static EXTENSION_LANGUAGE: Lazy<HashMap<&'static OsStr, Arc<Language>>> = Lazy::new(|| {
+static EXTENSION_LANGUAGE: LazyLock<HashMap<&'static OsStr, Arc<Language>>> = LazyLock::new(|| {
     let mut map = HashMap::new();
 
     macro_rules! lang {
@@ -73,6 +49,7 @@ pub struct Language {
 
 impl Language {
     /// Find the language to parse based on a file extension
+    ///
     /// # Example
     ///
     /// ```
