@@ -172,13 +172,13 @@ struct WalkArgs {
     exclude: Vec<String>,
 
     /// Search hidden files and directories
-    #[arg(long)]
+    #[arg(long, short = 'H')]
     hidden: bool,
     #[arg(long, overrides_with("hidden"), hide = true)]
     no_hidden: bool,
 
     /// Don't respect ignore files
-    #[arg(long)]
+    #[arg(long, short = 'I')]
     no_ignore: bool,
     #[arg(long, overrides_with("no_ignore"), hide = true)]
     ignore: bool,
