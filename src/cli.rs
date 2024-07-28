@@ -1,10 +1,17 @@
 use std::fs::Metadata;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use std::io::Write;
+
+use anyhow::Context;
 
 use ignore::DirEntry;
 
+use rayon::iter::{ParallelBridge, ParallelIterator};
+
 use orthotypos::config;
 use orthotypos::config::Config;
+use orthotypos::lint::Linter;
 
 #[derive(Copy, Clone, PartialEq, Eq, clap::ValueEnum, Default)]
 pub enum Format {
@@ -37,11 +44,65 @@ pub(crate) struct Args {
     #[arg(long, value_enum, ignore_case = true, default_value("long"))]
     format: Format,
 
+    /// Write the current configuration to file with `-` for stdout
+    #[arg(long, value_name = "OUTPUT")]
+    dump_config: Option<PathBuf>,
+
     #[command(flatten)]
     walk: WalkArgs,
 }
 
 impl Args {
+    #[allow(clippy::print_stderr)]
+    pub fn run(self) -> anyhow::Result<()> {
+        if let Some(output_path) = &self.dump_config {
+            return self.run_dump_config(output_path);
+        }
+
+        let report_handler = self.format().into_error_hook();
+        miette::set_hook(report_handler)?;
+
+        let config = self.to_config()?;
+        let walker = self.to_walk(&config)?;
+        let process_entry = |file: DirEntry| {
+            let Ok(Some(linter)) = Linter::from_path(file.path()) else {
+                return 0;
+            };
+
+            let mut stderr = std::io::stderr().lock();
+            linter
+                .iter()
+                .map(|typo| {
+                    let typo: miette::Report = typo.into();
+                    let _ = writeln!(stderr, "{typo:?}");
+                })
+                .count()
+        };
+        let typos_found: usize = if self.sort() {
+            walker.map(process_entry).sum()
+        } else {
+            walker.par_bridge().map(process_entry).sum()
+        };
+
+        if typos_found > 0 {
+            std::process::exit(1);
+        } else {
+            Ok(())
+        }
+    }
+
+    fn run_dump_config(&self, output_path: &Path) -> anyhow::Result<()> {
+        let config = self.to_config()?;
+        let output = toml::to_string_pretty(&config)?;
+        if output_path == Path::new("-") {
+            std::io::stdout().write_all(output.as_bytes())?;
+        } else {
+            std::fs::write(output_path, &output)?;
+        }
+
+        Ok(())
+    }
+
     pub fn to_walk<'a>(
         &'a self,
         config: &'a Config,
@@ -74,13 +135,25 @@ impl Args {
         self.format
     }
 
-    pub fn to_config(&self) -> config::Config {
-        config::Config {
+    pub fn to_config(&self) -> anyhow::Result<config::Config> {
+        let config_from_args = config::Config {
             files: self.walk.to_config(),
             ..Default::default()
+        };
+
+        let cwd = std::env::current_dir().context("no current working directory")?;
+        let mut config = Config::from_defaults();
+        for ancestor in cwd.ancestors() {
+            if let Some(derived) = Config::from_dir(ancestor)? {
+                config.update(&derived);
+                break;
+            }
         }
+        config.update(&config_from_args);
+        Ok(config)
     }
 
+    /// Whether to sort results
     pub fn sort(&self) -> bool {
         self.sort
     }

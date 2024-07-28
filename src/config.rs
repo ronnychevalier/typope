@@ -218,7 +218,6 @@ impl TypeEngineConfig {
                     extend_glob: Vec::new(),
                     engine: EngineConfig {
                         check_file: Some(false),
-                        ..Default::default()
                     },
                 },
             );
@@ -259,13 +258,10 @@ impl GlobEngineConfig {
     }
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct EngineConfig {
-    /// Check binary files.
-    pub binary: Option<bool>,
-
     /// Verifying spelling in files.
     pub check_file: Option<bool>,
 }
@@ -274,36 +270,20 @@ impl EngineConfig {
     pub fn from_defaults() -> Self {
         let empty = Self::default();
         Self {
-            binary: Some(empty.binary()),
             check_file: Some(empty.check_file()),
         }
     }
 
     pub fn update(&mut self, source: &Self) {
-        if let Some(source) = source.binary {
-            self.binary = Some(source);
-        }
         if let Some(source) = source.check_file {
             self.check_file = Some(source);
         }
-    }
-
-    pub fn binary(&self) -> bool {
-        self.binary.unwrap_or(false)
     }
 
     pub fn check_file(&self) -> bool {
         self.check_file.unwrap_or(true)
     }
 }
-
-impl PartialEq for EngineConfig {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.binary == rhs.binary && self.check_file == rhs.check_file
-    }
-}
-
-impl Eq for EngineConfig {}
 
 fn find_project_files<'a>(
     dir: &'a Path,
@@ -386,7 +366,6 @@ check-file = true
                 extend_glob: vec!["*.po".into()],
                 engine: EngineConfig {
                     check_file: Some(true),
-                    ..Default::default()
                 },
             },
         );
@@ -401,9 +380,6 @@ extend-glob = [
   '*.shader',
   '*.cginc',
 ]
-
-[type.shaders.extend-words]
-inout = "inout"
 "#;
 
         let mut expected = Config::default();
