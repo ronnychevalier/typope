@@ -12,6 +12,7 @@ const TREE_SITTER_TYPES: &[&str] = &["inline"];
 
 pub fn lang() -> Language {
     Language {
+        name: "markdown",
         language: tree_sitter_md::language(),
         extensions: &["md"],
         tree_sitter_types: TREE_SITTER_TYPES,

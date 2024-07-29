@@ -71,6 +71,11 @@ impl Args {
         let config = self.to_config()?;
         let walker = self.to_walk(&config)?;
         let process_entry = |file: DirEntry| {
+            if let Some(file_type_config) = config.type_.config_from_path(file.path()) {
+                if !file_type_config.check_file() {
+                    return 0;
+                }
+            }
             let Ok(Some(linter)) = Linter::from_path(file.path()) else {
                 return 0;
             };

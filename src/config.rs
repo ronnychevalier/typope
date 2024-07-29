@@ -6,8 +6,10 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
+
 use ignore::WalkBuilder;
-use kstring::KString;
+
+use crate::lang::Language;
 
 const NO_CHECK_TYPES: &[&str] = &["cert", "lock"];
 
@@ -204,21 +206,18 @@ impl Walk {
 #[serde(default)]
 #[serde(transparent)]
 pub struct TypeEngineConfig {
-    pub patterns: HashMap<KString, GlobEngineConfig>,
+    pub patterns: HashMap<String, EngineConfig>,
 }
 
 impl TypeEngineConfig {
     pub fn from_defaults() -> Self {
         let mut patterns = HashMap::new();
 
-        for no_check_type in NO_CHECK_TYPES {
+        for &no_check_type in NO_CHECK_TYPES {
             patterns.insert(
-                KString::from(*no_check_type),
-                GlobEngineConfig {
-                    extend_glob: Vec::new(),
-                    engine: EngineConfig {
-                        check_file: Some(false),
-                    },
+                no_check_type.to_owned(),
+                EngineConfig {
+                    check_file: Some(false),
                 },
             );
         }
@@ -235,26 +234,11 @@ impl TypeEngineConfig {
         }
     }
 
-    pub fn patterns(&self) -> impl Iterator<Item = (KString, GlobEngineConfig)> {
-        let mut engine = Self::from_defaults();
-        engine.update(self);
-        engine.patterns.into_iter()
-    }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(default)]
-#[serde(rename_all = "kebab-case")]
-pub struct GlobEngineConfig {
-    pub extend_glob: Vec<KString>,
-    #[serde(flatten)]
-    pub engine: EngineConfig,
-}
-
-impl GlobEngineConfig {
-    pub fn update(&mut self, source: &Self) {
-        self.extend_glob.extend(source.extend_glob.iter().cloned());
-        self.engine.update(&source.engine);
+    pub fn config_from_path(&self, path: impl AsRef<Path>) -> Option<&EngineConfig> {
+        let path = path.as_ref();
+        let extension = path.extension()?;
+        let lang = Language::from_extension(extension)?;
+        self.patterns.get(lang.name())
     }
 }
 
@@ -322,72 +306,15 @@ mod test {
     }
 
     #[test]
-    fn test_extend_glob_updates() {
-        let null = GlobEngineConfig::default();
-        let extended = GlobEngineConfig {
-            extend_glob: vec!["*.foo".into()],
-            ..Default::default()
-        };
-
-        let mut actual = null;
-        actual.update(&extended);
-
-        assert_eq!(actual, extended);
-    }
-
-    #[test]
-    fn test_extend_glob_extends() {
-        let base = GlobEngineConfig {
-            extend_glob: vec!["*.foo".into()],
-            ..Default::default()
-        };
-        let extended = GlobEngineConfig {
-            extend_glob: vec!["*.bar".into()],
-            ..Default::default()
-        };
-
-        let mut actual = base;
-        actual.update(&extended);
-
-        let expected: Vec<KString> = vec!["*.foo".into(), "*.bar".into()];
-        assert_eq!(actual.extend_glob, expected);
-    }
-
-    #[test]
     fn parse_extend_globs() {
         let input = r#"[type.po]
-extend-glob = ["*.po"]
 check-file = true
 "#;
         let mut expected = Config::default();
         expected.type_.patterns.insert(
             "po".into(),
-            GlobEngineConfig {
-                extend_glob: vec!["*.po".into()],
-                engine: EngineConfig {
-                    check_file: Some(true),
-                },
-            },
-        );
-        let actual = Config::from_toml(input).unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn parse_extend_words() {
-        let input = r#"[type.shaders]
-extend-glob = [
-  '*.shader',
-  '*.cginc',
-]
-"#;
-
-        let mut expected = Config::default();
-        expected.type_.patterns.insert(
-            "shaders".into(),
-            GlobEngineConfig {
-                extend_glob: vec!["*.shader".into(), "*.cginc".into()],
-                engine: EngineConfig::default(),
+            EngineConfig {
+                check_file: Some(true),
             },
         );
         let actual = Config::from_toml(input).unwrap();

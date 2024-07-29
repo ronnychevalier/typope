@@ -9,38 +9,53 @@ use crate::tree::PreorderTraversal;
 #[cfg(feature = "lang-markdown")]
 mod markdown;
 
-static EXTENSION_LANGUAGE: LazyLock<HashMap<&'static OsStr, Arc<Language>>> = LazyLock::new(|| {
-    let mut map = HashMap::new();
+struct Mapping {
+    lang_from_extensions: HashMap<&'static OsStr, Arc<Language>>,
+}
 
-    macro_rules! lang {
-        ($lang:ident, $feature: literal) => {
-            #[cfg(feature = $feature)]
-            {
-                let lang = Arc::new(Language::$lang());
-                for extension in lang.extensions() {
-                    map.insert(OsStr::new(extension), Arc::clone(&lang));
+impl Mapping {
+    pub fn build() -> Self {
+        let mut lang_from_extensions = HashMap::new();
+
+        macro_rules! lang {
+            ($lang:ident, $feature: literal) => {
+                #[cfg(feature = $feature)]
+                {
+                    let lang = Arc::new(Language::$lang());
+                    for extension in lang.extensions() {
+                        lang_from_extensions.insert(OsStr::new(extension), Arc::clone(&lang));
+                    }
                 }
-            }
-        };
+            };
+        }
+
+        lang!(rust, "lang-rust");
+        lang!(c, "lang-c");
+        lang!(cpp, "lang-cpp");
+        lang!(go, "lang-go");
+        lang!(python, "lang-python");
+        lang!(toml, "lang-toml");
+        lang!(yaml, "lang-yaml");
+        lang!(json, "lang-json");
+        lang!(markdown, "lang-markdown");
+
+        Self {
+            lang_from_extensions,
+        }
     }
 
-    lang!(rust, "lang-rust");
-    lang!(c, "lang-c");
-    lang!(cpp, "lang-cpp");
-    lang!(go, "lang-go");
-    lang!(python, "lang-python");
-    lang!(toml, "lang-toml");
-    lang!(yaml, "lang-yaml");
-    lang!(json, "lang-json");
-    lang!(markdown, "lang-markdown");
+    pub fn find_from_extension(&self, extension: &OsStr) -> Option<Arc<Language>> {
+        self.lang_from_extensions.get(extension).map(Arc::clone)
+    }
+}
 
-    map
-});
+static MAPPING: LazyLock<Mapping> = LazyLock::new(Mapping::build);
 
 type CustomParser = Box<dyn Fn(&[u8]) -> anyhow::Result<Box<dyn Parsed>> + Send + Sync>;
 
 /// Parser for a language to find strings based on its grammar
 pub struct Language {
+    name: &'static str,
     language: tree_sitter::Language,
     extensions: &'static [&'static str],
     tree_sitter_types: &'static [&'static str],
@@ -59,7 +74,7 @@ impl Language {
     /// assert!(Language::from_extension(OsStr::new("rs")).is_some());
     /// ```
     pub fn from_extension(extension: &OsStr) -> Option<Arc<Self>> {
-        EXTENSION_LANGUAGE.get(extension).map(Arc::clone)
+        MAPPING.find_from_extension(extension)
     }
 
     /// Returns an array of extensions supported by this language
@@ -75,6 +90,11 @@ impl Language {
     /// ```
     pub fn extensions(&self) -> &'static [&'static str] {
         self.extensions
+    }
+
+    /// Returns the name of the language
+    pub fn name(&self) -> &'static str {
+        self.name
     }
 
     /// Parses the content of a file
@@ -99,6 +119,7 @@ impl Language {
     #[cfg(feature = "lang-rust")]
     pub fn rust() -> Self {
         Self {
+            name: "rust",
             language: tree_sitter_rust::language(),
             extensions: &["rs"],
             tree_sitter_types: &["string_content"],
@@ -110,6 +131,7 @@ impl Language {
     #[cfg(feature = "lang-cpp")]
     pub fn cpp() -> Self {
         Self {
+            name: "cpp",
             language: tree_sitter_cpp::language(),
             extensions: &["cpp", "cc", "hpp", "hh"],
             tree_sitter_types: &["string_content"],
@@ -121,6 +143,7 @@ impl Language {
     #[cfg(feature = "lang-c")]
     pub fn c() -> Self {
         Self {
+            name: "c",
             language: tree_sitter_c::language(),
             extensions: &["c", "h"],
             tree_sitter_types: &["string_content"],
@@ -132,6 +155,7 @@ impl Language {
     #[cfg(feature = "lang-go")]
     pub fn go() -> Self {
         Self {
+            name: "go",
             language: tree_sitter_go::language(),
             extensions: &["go"],
             tree_sitter_types: &["interpreted_string_literal"],
@@ -143,6 +167,7 @@ impl Language {
     #[cfg(feature = "lang-python")]
     pub fn python() -> Self {
         Self {
+            name: "python",
             language: tree_sitter_python::language(),
             extensions: &["py"],
             tree_sitter_types: &["string", "concatenated_string"],
@@ -154,6 +179,7 @@ impl Language {
     #[cfg(feature = "lang-toml")]
     pub fn toml() -> Self {
         Self {
+            name: "toml",
             language: tree_sitter_toml_ng::language(),
             extensions: &["toml"],
             tree_sitter_types: &["string"],
@@ -165,6 +191,7 @@ impl Language {
     #[cfg(feature = "lang-yaml")]
     pub fn yaml() -> Self {
         Self {
+            name: "yaml",
             language: tree_sitter_yaml::language(),
             extensions: &["yml", "yaml"],
             tree_sitter_types: &["string_scalar"],
@@ -176,6 +203,7 @@ impl Language {
     #[cfg(feature = "lang-json")]
     pub fn json() -> Self {
         Self {
+            name: "json",
             language: tree_sitter_json::language(),
             extensions: &["json"],
             tree_sitter_types: &["string_content"],
