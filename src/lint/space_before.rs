@@ -4,8 +4,7 @@ use miette::{Diagnostic, SourceSpan};
 
 use thiserror::Error;
 
-use winnow::ascii::space1;
-use winnow::combinator::{alt, not, preceded, repeat, repeat_till};
+use winnow::combinator::{alt, delimited, not, preceded, repeat, repeat_till, terminated};
 use winnow::error::InputError;
 use winnow::token::{none_of, one_of, take};
 use winnow::{Located, PResult, Parser};
@@ -68,21 +67,23 @@ impl Rule for SpaceBeforePunctuationMarks {
     fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>> {
         fn space_before_colon<'s>(
             input: &mut Located<&'s [u8]>,
-        ) -> PResult<char, InputError<Located<&'s [u8]>>> {
-            let colon = preceded(space1, ':').parse_next(input)?;
+        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            let (_space, range) =
+                delimited(none_of([' ']), ' '.with_span(), ':').parse_next(input)?;
 
             // Handles cases when we have an emoji like `:fire:` or `:)`.
             // In such cases, we should not mark them as a typo.
             // not(terminated(alpha1, ':')).parse_next(input)?;
             not(none_of([' '])).parse_next(input)?;
 
-            Ok(colon)
+            Ok((':', range))
         }
 
         fn space_before_exclamation_mark<'s>(
             input: &mut Located<&'s [u8]>,
-        ) -> PResult<char, InputError<Located<&'s [u8]>>> {
-            let exclamation_mark = preceded(space1, '!').parse_next(input)?;
+        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            let (_space, range) =
+                delimited(none_of([' ']), ' '.with_span(), '!').parse_next(input)?;
 
             // Do not mark such a string `x != y` as a typo
             not('=').parse_next(input)?;
@@ -101,32 +102,40 @@ impl Rule for SpaceBeforePunctuationMarks {
             ))
             .parse_next(input)?;
 
-            Ok(exclamation_mark)
+            Ok(('!', range))
         }
 
         fn space_before_question_mark<'s>(
             input: &mut Located<&'s [u8]>,
-        ) -> PResult<char, InputError<Located<&'s [u8]>>> {
-            let question_mark = preceded(space1, '?').parse_next(input)?;
+        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            let (_space, range) =
+                delimited(none_of([' ']), ' '.with_span(), '?').parse_next(input)?;
 
             // Do not mark strings like ` ?Sized` as a typo: it has a meaning in Rust
             not("Sized").parse_next(input)?;
 
-            Ok(question_mark)
+            Ok(('?', range))
+        }
+
+        fn space_before_char<'s, const C: char>(
+            input: &mut Located<&'s [u8]>,
+        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            let (_space, range) = terminated(' '.with_span(), C).parse_next(input)?;
+
+            Ok((C, range))
         }
 
         fn space_before_punctuation<'s>(
             input: &mut Located<&'s [u8]>,
-        ) -> PResult<char, InputError<Located<&'s [u8]>>> {
-            let punctuation_mark = alt((
+        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            alt((
                 space_before_colon,
                 space_before_exclamation_mark,
                 space_before_question_mark,
-                preceded(space1, alt(('‽', '⸘'))),
+                space_before_char::<'‽'>,
+                space_before_char::<'⸘'>,
             ))
-            .parse_next(input)?;
-
-            Ok(punctuation_mark)
+            .parse_next(input)
         }
 
         fn locate_space_before_punctuation<'s>(
@@ -135,7 +144,7 @@ impl Rule for SpaceBeforePunctuationMarks {
             let (_, (punctuation_mark, range)): (Vec<u8>, (char, Range<usize>)) = repeat_till(
                 1..,
                 take::<_, _, InputError<_>>(1usize),
-                space_before_punctuation.with_span(),
+                space_before_punctuation,
             )
             .parse_next(input)?;
 
@@ -244,9 +253,7 @@ mod tests {
 
     #[test]
     fn typo_colon_multiple_spaces() {
-        let mut typos = SpaceBeforePunctuationMarks.check(br"test  : foobar");
-        let typo = typos.pop().unwrap();
-        assert_eq!(typo.span(), (4, 1).into());
+        let typos = SpaceBeforePunctuationMarks.check(br"test     : foobar");
         assert!(typos.is_empty());
     }
 
@@ -274,7 +281,7 @@ mod tests {
 
     #[test]
     fn typo_source() {
-        let source = r#""test  : foobar""#;
+        let source = r#""test : foobar""#;
         let mut typos = SpaceBeforePunctuationMarks.check(source.trim_matches('"').as_bytes());
         let mut typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 1).into());
