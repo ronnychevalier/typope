@@ -29,6 +29,7 @@ pub struct Linter {
     parsed: Box<dyn Parsed>,
     source: SharedSource,
     rules: Vec<Box<dyn Rule>>,
+    ignore_re: Vec<regex::Regex>,
 }
 
 impl Linter {
@@ -62,7 +63,12 @@ impl Linter {
             parsed,
             source,
             rules,
+            ignore_re: Vec::new(),
         })
+    }
+
+    pub fn extend_ignore_re(&mut self, ignore_re: &[regex::Regex]) {
+        self.ignore_re.extend_from_slice(ignore_re);
     }
 
     /// Returns an iterator over the typos found in the source
@@ -102,6 +108,7 @@ pub struct Iter<'t> {
     source: SharedSource,
     typos: Vec<Box<dyn Typo>>,
     rules: &'t [Box<dyn Rule>],
+    ignore_re: &'t [regex::Regex],
 }
 
 impl<'t> Iter<'t> {
@@ -111,6 +118,7 @@ impl<'t> Iter<'t> {
             source: linter.source.clone(),
             typos: vec![],
             rules: &linter.rules,
+            ignore_re: &linter.ignore_re,
         }
     }
 }
@@ -138,18 +146,26 @@ impl Iterator for Iter<'_> {
             }
 
             let offset = node.start_byte();
-            let typos =
-                node.lintable_bytes(self.source.inner()).flat_map(|string| {
+            let typos = node
+                .lintable_bytes(self.source.inner())
+                .filter_map(|bytes| {
+                    let string = String::from_utf8_lossy(bytes);
+                    let ignored = self.ignore_re.iter().any(|re| re.is_match(&string));
+                    if ignored {
+                        return None;
+                    }
+
                     let source = self.source.clone();
-                    let typos = self.rules.iter().flat_map(|rule| rule.check(string)).map(
+                    let typos = self.rules.iter().flat_map(|rule| rule.check(bytes)).map(
                         move |mut typo| {
                             typo.with_source(source.clone(), offset);
                             typo
                         },
                     );
 
-                    Box::new(typos)
-                });
+                    Some(Box::new(typos))
+                })
+                .flatten();
             self.typos.extend(typos);
         }
     }
@@ -254,6 +270,23 @@ mod tests {
             "orthotypos::space-before-punctuation-mark"
         );
         assert_eq!(typo.span(), (141, 2).into());
+    }
+
+    #[cfg(feature = "lang-rust")]
+    #[test]
+    fn typo_rust_string_ignored() {
+        let rust = r#"
+        /// Doc comment
+        fn func() -> anyhow::Result<()> {
+            anyhow::bail!("failed to do something for the following reason : foobar foo");
+        }
+        "#;
+        let mut linter =
+            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        linter.extend_ignore_re(&[regex::Regex::new(r"foobar foo").unwrap()]);
+
+        let typos = linter.iter().count();
+        assert_eq!(typos, 0);
     }
 
     #[cfg(feature = "lang-rust")]

@@ -1,6 +1,7 @@
 //! Config parsers to recognize the config fields of [`typos`](https://crates.io/crates/typos-cli).
 // It is based on <https://github.com/crate-ci/typos/blob/master/crates/typos-cli/src/config.rs>
 // but it has been modified to remove fields that we do not care about for the moment.
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -10,8 +11,6 @@ use anyhow::Context;
 use ignore::WalkBuilder;
 
 use crate::lang::Language;
-
-const NO_CHECK_TYPES: &[&str] = &["cert", "lock"];
 
 pub const SUPPORTED_FILE_NAMES: &[&str] =
     &["typos.toml", "_typos.toml", ".typos.toml", "pyproject.toml"];
@@ -24,8 +23,6 @@ pub struct Config {
     pub default: EngineConfig,
     #[serde(rename = "type")]
     pub type_: TypeEngineConfig,
-    #[serde(skip)]
-    pub overrides: EngineConfig,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -82,7 +79,6 @@ impl Config {
             files: Walk::from_defaults(),
             default: EngineConfig::from_defaults(),
             type_: TypeEngineConfig::from_defaults(),
-            overrides: EngineConfig::default(),
         }
     }
 
@@ -90,7 +86,6 @@ impl Config {
         self.files.update(&source.files);
         self.default.update(&source.default);
         self.type_.update(&source.type_);
-        self.overrides.update(&source.overrides);
     }
 
     pub fn to_walk_builder(&self, path: &Path) -> WalkBuilder {
@@ -104,6 +99,23 @@ impl Config {
             .ignore(self.files.ignore_dot());
 
         walk
+    }
+
+    pub fn config_from_path(&self, path: impl AsRef<Path>) -> Cow<'_, EngineConfig> {
+        let path = path.as_ref();
+        let Some(extension) = path.extension() else {
+            return Cow::Borrowed(&self.default);
+        };
+        let Some(lang) = Language::from_extension(extension) else {
+            return Cow::Borrowed(&self.default);
+        };
+
+        let mut config = self.default.clone();
+        if let Some(type_config) = self.type_.patterns.get(lang.name()) {
+            config.update(type_config);
+        }
+
+        Cow::Owned(config)
     }
 }
 
@@ -211,18 +223,7 @@ pub struct TypeEngineConfig {
 
 impl TypeEngineConfig {
     pub fn from_defaults() -> Self {
-        let mut patterns = HashMap::new();
-
-        for &no_check_type in NO_CHECK_TYPES {
-            patterns.insert(
-                no_check_type.to_owned(),
-                EngineConfig {
-                    check_file: Some(false),
-                },
-            );
-        }
-
-        Self { patterns }
+        Self::default()
     }
 
     pub fn update(&mut self, source: &Self) {
@@ -233,28 +234,38 @@ impl TypeEngineConfig {
                 .update(engine);
         }
     }
-
-    pub fn config_from_path(&self, path: impl AsRef<Path>) -> Option<&EngineConfig> {
-        let path = path.as_ref();
-        let extension = path.extension()?;
-        let lang = Language::from_extension(extension)?;
-        self.patterns.get(lang.name())
-    }
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct EngineConfig {
     /// Verifying spelling in files.
     pub check_file: Option<bool>,
+
+    #[serde(with = "serde_regex")]
+    pub extend_ignore_re: Vec<regex::Regex>,
 }
+
+impl PartialEq for EngineConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.check_file == other.check_file
+            && self
+                .extend_ignore_re
+                .iter()
+                .map(|r| r.as_str())
+                .eq(other.extend_ignore_re.iter().map(|r| r.as_str()))
+    }
+}
+
+impl Eq for EngineConfig {}
 
 impl EngineConfig {
     pub fn from_defaults() -> Self {
         let empty = Self::default();
         Self {
             check_file: Some(empty.check_file()),
+            ..Default::default()
         }
     }
 
@@ -315,6 +326,7 @@ check-file = true
             "po".into(),
             EngineConfig {
                 check_file: Some(true),
+                ..Default::default()
             },
         );
         let actual = Config::from_toml(input).unwrap();

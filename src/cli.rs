@@ -71,14 +71,15 @@ impl Args {
         let config = self.to_config()?;
         let walker = self.to_walk(&config)?;
         let process_entry = |file: DirEntry| {
-            if let Some(file_type_config) = config.type_.config_from_path(file.path()) {
-                if !file_type_config.check_file() {
-                    return 0;
-                }
+            let config = config.config_from_path(file.path());
+            if !config.check_file() {
+                return 0;
             }
-            let Ok(Some(linter)) = Linter::from_path(file.path()) else {
+
+            let Ok(Some(mut linter)) = Linter::from_path(file.path()) else {
                 return 0;
             };
+            linter.extend_ignore_re(&config.extend_ignore_re);
 
             let mut stderr = std::io::stderr().lock();
             linter
