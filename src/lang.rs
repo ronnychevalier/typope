@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::hash::Hash;
 use std::sync::{Arc, LazyLock};
 
 use tree_sitter::{Node, Parser, Tree};
@@ -11,11 +12,13 @@ mod markdown;
 
 struct Mapping {
     lang_from_extensions: HashMap<&'static OsStr, Arc<Language>>,
+    languages: Vec<Arc<Language>>,
 }
 
 impl Mapping {
     pub fn build() -> Self {
         let mut lang_from_extensions = HashMap::new();
+        let mut languages = Vec::new();
 
         macro_rules! lang {
             ($lang:ident, $feature: literal) => {
@@ -25,6 +28,7 @@ impl Mapping {
                     for extension in lang.extensions() {
                         lang_from_extensions.insert(OsStr::new(extension), Arc::clone(&lang));
                     }
+                    languages.push(lang);
                 }
             };
         }
@@ -41,6 +45,7 @@ impl Mapping {
 
         Self {
             lang_from_extensions,
+            languages,
         }
     }
 
@@ -95,6 +100,11 @@ impl Language {
     /// Returns the name of the language
     pub fn name(&self) -> &'static str {
         self.name
+    }
+
+    /// Returns an iterator over the supported languages
+    pub fn iter() -> impl Iterator<Item = &'static Self> {
+        MAPPING.languages.iter().map(AsRef::as_ref)
     }
 
     /// Parses the content of a file
@@ -215,6 +225,26 @@ impl Language {
     #[cfg(feature = "lang-markdown")]
     pub fn markdown() -> Self {
         markdown::lang()
+    }
+}
+
+impl PartialEq for Language {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.language == other.language
+            && self.extensions == other.extensions
+            && self.tree_sitter_types == other.tree_sitter_types
+    }
+}
+
+impl Eq for Language {}
+
+impl Hash for Language {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.language.hash(state);
+        self.extensions.hash(state);
+        self.tree_sitter_types.hash(state);
     }
 }
 

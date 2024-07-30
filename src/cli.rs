@@ -11,6 +11,7 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 
 use orthotypos::config;
 use orthotypos::config::Config;
+use orthotypos::lang::Language;
 use orthotypos::lint::Linter;
 
 #[derive(Copy, Clone, PartialEq, Eq, clap::ValueEnum, Default)]
@@ -31,14 +32,23 @@ impl Format {
 
 #[derive(clap::Parser)]
 #[command(about, version)]
+#[command(group = clap::ArgGroup::new("mode").multiple(false))]
 pub(crate) struct Args {
     /// Paths to check
     #[arg(default_value = ".")]
     path: Vec<PathBuf>,
 
+    /// Debug: Print each file that would be spellchecked.
+    #[arg(long, group = "mode", help_heading = "Mode")]
+    files: bool,
+
     /// Write the current configuration to file with `-` for stdout
     #[arg(long, value_name = "OUTPUT", group = "mode", help_heading = "Mode")]
     dump_config: Option<PathBuf>,
+
+    /// Show all supported file types
+    #[arg(long, group = "mode", help_heading = "Mode")]
+    type_list: bool,
 
     /// Sort results
     #[arg(long, help_heading = "Output")]
@@ -59,10 +69,16 @@ pub(crate) struct Args {
 }
 
 impl Args {
-    #[allow(clippy::print_stderr)]
+    #[allow(clippy::print_stderr, clippy::print_stdout)]
     pub fn run(self) -> anyhow::Result<()> {
         if let Some(output_path) = &self.dump_config {
             return self.run_dump_config(output_path);
+        }
+        if self.type_list {
+            for lang in Language::iter() {
+                println!("{}: {}", lang.name(), lang.extensions().join(", "))
+            }
+            return Ok(());
         }
 
         let report_handler = self.format().into_error_hook();
@@ -79,6 +95,10 @@ impl Args {
             let Ok(Some(mut linter)) = Linter::from_path(file.path()) else {
                 return 0;
             };
+            if self.files {
+                println!("{}", file.path().display());
+                return 0;
+            }
             linter.extend_ignore_re(&config.extend_ignore_re);
 
             let mut stderr = std::io::stderr().lock();
