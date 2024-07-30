@@ -7,7 +7,7 @@ use thiserror::Error;
 use winnow::ascii::space1;
 use winnow::combinator::{alt, not, preceded, repeat, repeat_till};
 use winnow::error::InputError;
-use winnow::token::{none_of, take};
+use winnow::token::{none_of, one_of, take};
 use winnow::{Located, PResult, Parser};
 
 use super::SharedSource;
@@ -88,6 +88,18 @@ impl Rule for SpaceBeforePunctuationMarks {
             not('=').parse_next(input)?;
             // Do not mark strings like ` !Send` as a typo: it has a meaning in Rust
             not(alt(("Send", "Sync"))).parse_next(input)?;
+            // A string might contain some kind of shell script like `[ ! -e /some/file ]`
+            // See `man test` for the possible options.
+            not(preceded(
+                " -",
+                alt((
+                    one_of('b'..='h'),
+                    one_of([
+                        'G', 'k', 'L', 'N', 'O', 'p', 'r', 's', 'S', 't', 'u', 'w', 'x',
+                    ]),
+                )),
+            ))
+            .parse_next(input)?;
 
             Ok(exclamation_mark)
         }
@@ -291,5 +303,12 @@ mod tests {
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (4, 2).into());
         assert!(typos.is_empty());
+    }
+
+    #[test]
+    fn looks_like_shell() {
+        assert!(SpaceBeforePunctuationMarks
+            .check(br"[ ! -e /run/dbus ] || mount -t tmpfs none /run/dbus")
+            .is_empty());
     }
 }
