@@ -269,7 +269,7 @@ mod tests {
             format!("{}", typo.code().unwrap()),
             "orthotypos::space-before-punctuation-mark"
         );
-        assert_eq!(typo.span(), (141, 2).into());
+        assert_eq!(typo.span(), (141, 1).into());
     }
 
     #[cfg(feature = "lang-rust")]
