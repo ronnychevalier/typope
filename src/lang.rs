@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::hash::Hash;
@@ -211,6 +210,22 @@ impl Hash for Language {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub struct LintableString {
+    pub(crate) offset: usize,
+    pub(crate) value: String,
+}
+
+impl LintableString {
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+}
+
 /// Wrapper around a [Node] to make it easier to ignore ranges of bytes based on some children
 pub struct LintableNode<'t> {
     node: Node<'t>,
@@ -253,39 +268,29 @@ impl<'t> LintableNode<'t> {
         })
     }
 
-    /// Returns an iterator over the bytes of the node that have not been ignored
-    pub fn lintable_bytes<'a, 'b>(&'a self, bytes: &'b [u8]) -> impl Iterator<Item = &'b [u8]> + 'a
-    where
-        'b: 'a,
-    {
-        self.lintable_ranges()
-            .filter_map(move |range| bytes.get(range))
-    }
-
     /// Returns an iterator over the strings of the node that have not been ignored
     pub fn lintable_strings<'a, 'b>(
         &'a self,
         bytes: &'b [u8],
-    ) -> impl Iterator<Item = Cow<'a, str>> + 'a
+    ) -> impl Iterator<Item = LintableString> + 'a
     where
         'b: 'a,
     {
-        self.lintable_bytes(bytes).map(String::from_utf8_lossy)
-    }
+        self.lintable_ranges().filter_map(move |range| {
+            let offset = range.start;
+            let bytes = bytes.get(range)?;
+            let string = String::from_utf8_lossy(bytes).into_owned();
 
-    /// Byte offset where this node start
-    pub fn start_byte(&self) -> usize {
-        self.node.start_byte()
+            Some(LintableString {
+                offset,
+                value: string,
+            })
+        })
     }
 
     /// Byte range of source code that this node represents
     pub fn byte_range(&self) -> std::ops::Range<usize> {
         self.node.byte_range()
-    }
-
-    /// Node's immediate parent
-    pub fn parent(&self) -> Option<Node<'t>> {
-        self.node.parent()
     }
 }
 
@@ -304,12 +309,14 @@ pub trait Parsed {
     fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
 
     /// Returns an iterator over the strings found in the source based on the language grammar
-    fn strings<'t>(&'t mut self, source: &'t [u8]) -> Box<dyn Iterator<Item = String> + 't> {
-        Box::new(self.lintable_nodes().flat_map(|node| {
-            node.lintable_strings(source)
-                .map(Cow::into_owned)
-                .collect::<Vec<_>>()
-        }))
+    fn strings<'t>(
+        &'t mut self,
+        source: &'t [u8],
+    ) -> Box<dyn Iterator<Item = LintableString> + 't> {
+        Box::new(
+            self.lintable_nodes()
+                .flat_map(|node| node.lintable_strings(source).collect::<Vec<_>>()),
+        )
     }
 }
 

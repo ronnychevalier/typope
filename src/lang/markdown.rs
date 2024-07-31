@@ -98,7 +98,7 @@ impl Language {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::Parsed;
+    use crate::lang::{LintableString, Parsed};
 
     use super::ParsedMarkdown;
 
@@ -115,24 +115,42 @@ hello
         let mut iter = parsed.lintable_nodes();
         let node = iter.next().unwrap();
         assert_eq!(
-            node.lintable_bytes(markdown.as_bytes()).collect::<Vec<_>>(),
-            [&b"Hello"[..]]
+            node.lintable_strings(markdown.as_bytes())
+                .collect::<Vec<_>>(),
+            [LintableString {
+                offset: 2,
+                value: "Hello".into()
+            }]
         );
 
         let node = iter.next().unwrap();
         assert_eq!(
-            node.lintable_bytes(markdown.as_bytes()).collect::<Vec<_>>(),
+            node.lintable_strings(markdown.as_bytes())
+                .collect::<Vec<_>>(),
             [
-                &b"This is a text "[..],
-                &b" code_span in "[..],
-                &b" places"[..],
+                LintableString {
+                    offset: 8,
+                    value: "This is a text ".into()
+                },
+                LintableString {
+                    offset: 34,
+                    value: " code_span in ".into()
+                },
+                LintableString {
+                    offset: 57,
+                    value: " places".into()
+                },
             ]
         );
 
         let node = iter.next().unwrap();
         assert_eq!(
-            node.lintable_bytes(markdown.as_bytes()).collect::<Vec<_>>(),
-            [&b"hello"[..]]
+            node.lintable_strings(markdown.as_bytes())
+                .collect::<Vec<_>>(),
+            [LintableString {
+                offset: 89,
+                value: "hello".into()
+            }]
         );
 
         assert!(iter.next().is_none());

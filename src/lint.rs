@@ -7,7 +7,7 @@ pub mod space_before;
 
 use self::space_before::SpaceBeforePunctuationMarks;
 
-use crate::lang::{Language, LintableNode, Parsed};
+use crate::lang::{Language, LintableString, Parsed};
 use crate::SharedSource;
 
 /// Type that represents a rule that checks for typos
@@ -95,7 +95,7 @@ impl Linter {
 
 /// Iterator over the typos found in a file
 pub struct Iter<'t> {
-    strings: Box<dyn Iterator<Item = LintableNode<'t>> + 't>,
+    strings: Box<dyn Iterator<Item = LintableString> + 't>,
     source: SharedSource,
     typos: Vec<Box<dyn Typo>>,
     rules: &'t [Box<dyn Rule>],
@@ -105,7 +105,7 @@ pub struct Iter<'t> {
 impl<'t> Iter<'t> {
     fn new(linter: &'t mut Linter) -> Self {
         Self {
-            strings: linter.parsed.lintable_nodes(),
+            strings: linter.parsed.strings(linter.source.as_ref()),
             source: linter.source.clone(),
             typos: vec![],
             rules: &linter.rules,
@@ -123,30 +123,24 @@ impl Iterator for Iter<'_> {
                 return Some(typo);
             }
 
-            let node = self.strings.next()?;
+            let string = self.strings.next()?;
 
-            let offset = node.start_byte();
-            let typos = node
-                .lintable_strings(self.source.inner())
-                .filter_map(|string| {
-                    let ignored = self.ignore_re.iter().any(|re| re.is_match(&string));
-                    if ignored {
-                        return None;
-                    }
+            let offset = string.offset();
+            let ignored = self.ignore_re.iter().any(|re| re.is_match(string.as_str()));
+            if ignored {
+                continue;
+            }
 
-                    let source = self.source.clone();
-                    let typos = self
-                        .rules
-                        .iter()
-                        .flat_map(move |rule| rule.check(string.as_bytes()))
-                        .map(move |mut typo| {
-                            typo.with_source(source.clone(), offset);
-                            typo
-                        });
+            let source = self.source.clone();
+            let typos = self
+                .rules
+                .iter()
+                .flat_map(move |rule| rule.check(string.as_str().as_bytes()))
+                .map(move |mut typo| {
+                    typo.with_source(source.clone(), offset);
+                    typo
+                });
 
-                    Some(Box::new(typos))
-                })
-                .flatten();
             self.typos.extend(typos);
         }
     }

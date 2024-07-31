@@ -14,6 +14,7 @@ impl Language {
 
 #[cfg(test)]
 mod tests {
+    use crate::lang::LintableString;
     use crate::SharedSource;
 
     use super::Language;
@@ -38,11 +39,26 @@ mod tests {
         assert_eq!(
             strings,
             [
-                r"failed to do something for the following reason : foobar foo",
-                "hello",
-                "aaaa",
-                "bbbb",
-                "cccc"
+                LintableString {
+                    offset: 94,
+                    value: r"failed to do something for the following reason : foobar foo".into()
+                },
+                LintableString {
+                    offset: 197,
+                    value: "hello".into()
+                },
+                LintableString {
+                    offset: 316,
+                    value: "aaaa".into()
+                },
+                LintableString {
+                    offset: 324,
+                    value: "bbbb".into()
+                },
+                LintableString {
+                    offset: 332,
+                    value: "cccc".into()
+                }
             ]
         );
     }
