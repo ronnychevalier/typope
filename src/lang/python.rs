@@ -1,4 +1,4 @@
-use super::Language;
+use super::{Language, Mode};
 
 impl Language {
     /// Creates a language parser for Python
@@ -7,8 +7,9 @@ impl Language {
             name: "python",
             language: tree_sitter_python::language(),
             extensions: &["py"],
-            tree_sitter_types: &["string", "concatenated_string"],
-            parser: None,
+            parser: Mode::Generic {
+                tree_sitter_types: &["string", "concatenated_string"],
+            },
         }
     }
 }

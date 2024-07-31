@@ -4,9 +4,10 @@ use std::ffi::OsStr;
 use std::hash::Hash;
 use std::sync::{Arc, LazyLock};
 
-use tree_sitter::{Node, Parser, Tree};
+use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
 
 use crate::tree::PreorderTraversal;
+use crate::SharedSource;
 
 #[cfg(feature = "lang-c")]
 mod c;
@@ -75,13 +76,22 @@ static MAPPING: LazyLock<Mapping> = LazyLock::new(Mapping::build);
 
 type CustomParser = Box<dyn Fn(&[u8]) -> anyhow::Result<Box<dyn Parsed>> + Send + Sync>;
 
+enum Mode {
+    Generic {
+        tree_sitter_types: &'static [&'static str],
+    },
+
+    Custom(CustomParser),
+
+    Query(String),
+}
+
 /// Parser for a language to find strings based on its grammar
 pub struct Language {
     name: &'static str,
     language: tree_sitter::Language,
     extensions: &'static [&'static str],
-    tree_sitter_types: &'static [&'static str],
-    parser: Option<CustomParser>,
+    parser: Mode,
 }
 
 impl Language {
@@ -125,21 +135,61 @@ impl Language {
     }
 
     /// Parses the content of a file
-    pub fn parse(&self, source_content: impl AsRef<[u8]>) -> anyhow::Result<Box<dyn Parsed>> {
-        if let Some(parser) = &self.parser {
-            Ok(parser(source_content.as_ref())?)
-        } else {
-            let mut parser = Parser::new();
-            parser.set_language(&self.language)?;
-            let Some(tree) = parser.parse(source_content, None) else {
-                anyhow::bail!("Invalid language");
-            };
+    pub fn parse(&self, source: &SharedSource) -> anyhow::Result<Box<dyn Parsed>> {
+        match &self.parser {
+            Mode::Generic { tree_sitter_types } => {
+                let mut parser = Parser::new();
+                parser.set_language(&self.language)?;
+                let Some(tree) = parser.parse(source, None) else {
+                    anyhow::bail!("Invalid language");
+                };
 
-            Ok(Box::new(ParsedGeneric {
-                tree,
-                tree_sitter_types: self.tree_sitter_types,
-            }))
+                Ok(Box::new(ParsedGeneric {
+                    tree,
+                    tree_sitter_types,
+                }))
+            }
+            Mode::Custom(parser) => Ok(parser(source.as_ref())?),
+            Mode::Query(query) => {
+                let mut parser = Parser::new();
+                parser.set_language(&self.language)?;
+                let Some(tree) = parser.parse(source.as_ref(), None) else {
+                    anyhow::bail!("Invalid language");
+                };
+                let query = Query::new(&self.language, query)?;
+
+                Ok(Box::new(ParsedQuery {
+                    tree,
+                    query,
+                    source: source.clone(),
+                    cursor: QueryCursor::new(),
+                }))
+            }
         }
+    }
+}
+
+struct ParsedQuery {
+    tree: Tree,
+    query: Query,
+    cursor: QueryCursor,
+    source: SharedSource,
+}
+
+impl Parsed for ParsedQuery {
+    fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+        let nodes = self
+            .cursor
+            .matches(&self.query, self.tree.root_node(), self.source.as_ref())
+            .flat_map(|m| m.captures.iter())
+            .filter_map(|capture| {
+                if capture.node.byte_range().len() <= 3 {
+                    return None;
+                }
+
+                Some(LintableNode::from(capture.node))
+            });
+        Box::new(nodes)
     }
 }
 
@@ -148,7 +198,6 @@ impl PartialEq for Language {
         self.name == other.name
             && self.language == other.language
             && self.extensions == other.extensions
-            && self.tree_sitter_types == other.tree_sitter_types
     }
 }
 
@@ -159,7 +208,6 @@ impl Hash for Language {
         self.name.hash(state);
         self.language.hash(state);
         self.extensions.hash(state);
-        self.tree_sitter_types.hash(state);
     }
 }
 
@@ -253,13 +301,13 @@ impl<'t> From<Node<'t>> for LintableNode<'t> {
 /// Type that represents a file that has been parsed
 pub trait Parsed {
     /// Returns an iterator over the lintable nodes based on the language grammar
-    fn lintable_nodes<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
+    fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
 
     /// Returns an iterator over the strings found in the source based on the language grammar
-    fn strings<'t>(&'t self, source: &'t [u8]) -> Box<dyn Iterator<Item = String> + 't> {
+    fn strings<'t>(&'t mut self, source: &'t [u8]) -> Box<dyn Iterator<Item = String> + 't> {
         Box::new(self.lintable_nodes().flat_map(|node| {
             node.lintable_strings(source)
-                .map(|s| s.into_owned())
+                .map(Cow::into_owned)
                 .collect::<Vec<_>>()
         }))
     }
@@ -271,7 +319,7 @@ struct ParsedGeneric {
 }
 
 impl Parsed for ParsedGeneric {
-    fn lintable_nodes<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+    fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
         Box::new(Iter::new(self))
     }
 }

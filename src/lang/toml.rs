@@ -1,4 +1,4 @@
-use super::Language;
+use super::{Language, Mode};
 
 impl Language {
     /// Creates a language parser for TOML
@@ -7,8 +7,9 @@ impl Language {
             name: "toml",
             language: tree_sitter_toml_ng::language(),
             extensions: &["toml"],
-            tree_sitter_types: &["string"],
-            parser: None,
+            parser: Mode::Generic {
+                tree_sitter_types: &["string"],
+            },
         }
     }
 }

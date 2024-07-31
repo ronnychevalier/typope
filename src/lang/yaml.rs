@@ -1,4 +1,4 @@
-use super::Language;
+use super::{Language, Mode};
 
 impl Language {
     /// Creates a language parser for YAML
@@ -7,8 +7,9 @@ impl Language {
             name: "yaml",
             language: tree_sitter_yaml::language(),
             extensions: &["yml", "yaml"],
-            tree_sitter_types: &["string_scalar"],
-            parser: None,
+            parser: Mode::Generic {
+                tree_sitter_types: &["string_scalar"],
+            },
         }
     }
 }

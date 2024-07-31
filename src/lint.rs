@@ -1,13 +1,14 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use miette::{MietteError, NamedSource, SourceCode, SourceSpan, SpanContents};
+use miette::{SourceCode, SourceSpan};
 
 pub mod space_before;
 
 use self::space_before::SpaceBeforePunctuationMarks;
 
 use crate::lang::{Language, LintableNode, Parsed};
+use crate::SharedSource;
 
 /// Type that represents a rule that checks for typos
 pub trait Rule {
@@ -54,8 +55,8 @@ impl Linter {
         source_name: impl AsRef<str>,
     ) -> anyhow::Result<Self> {
         let source_content = source_content.into();
-        let parsed = lang.parse(&source_content)?;
         let source = SharedSource::new(source_name, source_content);
+        let parsed = lang.parse(&source)?;
 
         let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Rule>];
 
@@ -78,8 +79,8 @@ impl Linter {
     /// ```no_run
     /// # use orthotypos::lint::Linter;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let Some(linter) = Linter::from_path("file.rs")? else { return Ok(()); };
-    /// for typo in &linter {
+    /// let Some(mut linter) = Linter::from_path("file.rs")? else { return Ok(()); };
+    /// for typo in linter.iter() {
     ///     let typo: miette::Report = typo.into();
     ///     eprintln!("{typo:?}");
     /// }
@@ -87,18 +88,8 @@ impl Linter {
     /// # }
     /// ```
     #[must_use]
-    pub fn iter(&self) -> Iter<'_> {
+    pub fn iter(&mut self) -> Iter<'_> {
         Iter::new(self)
-    }
-}
-
-impl<'t> IntoIterator for &'t Linter {
-    type Item = Box<dyn Typo>;
-
-    type IntoIter = Iter<'t>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
     }
 }
 
@@ -112,7 +103,7 @@ pub struct Iter<'t> {
 }
 
 impl<'t> Iter<'t> {
-    fn new(linter: &'t Linter) -> Self {
+    fn new(linter: &'t mut Linter) -> Self {
         Self {
             strings: linter.parsed.lintable_nodes(),
             source: linter.source.clone(),
@@ -133,17 +124,6 @@ impl Iterator for Iter<'_> {
             }
 
             let node = self.strings.next()?;
-            let kind = node.kind();
-
-            // Specific case for Rust to avoid linting raw strings (`r"this is a raw string"`) and creating false positives.
-            // TODO: should be handled differently
-            if kind == "string_content"
-                && node
-                    .parent()
-                    .is_some_and(|parent| parent.kind() == "raw_string_literal")
-            {
-                continue;
-            }
 
             let offset = node.start_byte();
             let typos = node
@@ -169,35 +149,6 @@ impl Iterator for Iter<'_> {
                 .flatten();
             self.typos.extend(typos);
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SharedSource(Arc<NamedSource<Vec<u8>>>);
-
-impl std::ops::Deref for SharedSource {
-    type Target = NamedSource<Vec<u8>>;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
-    }
-}
-
-impl SharedSource {
-    pub fn new(name: impl AsRef<str>, bytes: Vec<u8>) -> Self {
-        Self(Arc::new(NamedSource::new(name, bytes)))
-    }
-}
-
-impl SourceCode for SharedSource {
-    fn read_span<'a>(
-        &'a self,
-        span: &miette::SourceSpan,
-        context_lines_before: usize,
-        context_lines_after: usize,
-    ) -> Result<Box<dyn SpanContents<'a> + 'a>, MietteError> {
-        self.0
-            .read_span(span, context_lines_before, context_lines_after)
     }
 }
 
@@ -260,7 +211,7 @@ mod tests {
             anyhow::bail!("failed to do something for the following reason : foobar foo");
         }
         "#;
-        let linter =
+        let mut linter =
             Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let mut typos = linter.iter().collect::<Vec<_>>();
@@ -298,7 +249,7 @@ mod tests {
             r"a ?regex.that ?match ?something ?"
         }
         "#;
-        let linter =
+        let mut linter =
             Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let typos = linter.iter().count();
@@ -319,7 +270,7 @@ mod tests {
             true
         }
         "#;
-        let linter =
+        let mut linter =
             Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let typos = linter.iter().count();
@@ -332,7 +283,7 @@ mod tests {
         let markdown = r#"# Hello
 Hello mate `this should not trigger the rule : foobar` abc
         "#;
-        let linter = Linter::new(
+        let mut linter = Linter::new(
             Language::markdown().into(),
             markdown.as_bytes().to_vec(),
             "file.md",

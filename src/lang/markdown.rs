@@ -6,7 +6,7 @@ use tree_sitter_md::MarkdownTree;
 
 use crate::tree::PreorderTraversal;
 
-use super::{Language, LintableNode, Parsed};
+use super::{Language, LintableNode, Mode, Parsed};
 
 const TREE_SITTER_TYPES: &[&str] = &["inline"];
 
@@ -31,7 +31,7 @@ impl ParsedMarkdown {
 }
 
 impl Parsed for ParsedMarkdown {
-    fn lintable_nodes<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+    fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
         Box::new(IterMarkdown::new(self))
     }
 }
@@ -89,8 +89,7 @@ impl Language {
             name: "markdown",
             language: tree_sitter_md::language(),
             extensions: &["md"],
-            tree_sitter_types: TREE_SITTER_TYPES,
-            parser: Some(Box::new(move |text| {
+            parser: Mode::Custom(Box::new(move |text| {
                 Ok(Box::new(ParsedMarkdown::new(text)?))
             })),
         }
@@ -112,7 +111,7 @@ what about this
 ```
 hello
 "#;
-        let parsed = ParsedMarkdown::new(markdown).unwrap();
+        let mut parsed = ParsedMarkdown::new(markdown).unwrap();
         let mut iter = parsed.lintable_nodes();
         let node = iter.next().unwrap();
         assert_eq!(

@@ -1,4 +1,4 @@
-use super::Language;
+use super::{Language, Mode};
 
 impl Language {
     /// Creates a language parser for Rust
@@ -7,14 +7,15 @@ impl Language {
             name: "rust",
             language: tree_sitter_rust::language(),
             extensions: &["rs"],
-            tree_sitter_types: &["string_content"],
-            parser: None,
+            parser: Mode::Query("(string_literal (string_content) @strings)+".into()),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::SharedSource;
+
     use super::Language;
 
     #[test]
@@ -26,13 +27,14 @@ mod tests {
         }
 
         static STR: &str = "hello";
-
+        static RSTR: &str = r"raw raw";
         fn f() { let a = ["a", "b", "c"];}
         fn fb() { let a = ["aaaa", "bbbb", "cccc"];}
         "#;
 
-        let parsed = Language::rust().parse(rust).unwrap();
-        let strings = parsed.strings(rust.as_bytes()).collect::<Vec<_>>();
+        let rust = SharedSource::new("file.rs", rust.as_bytes().to_vec());
+        let mut parsed = Language::rust().parse(&rust).unwrap();
+        let strings = parsed.strings(rust.as_ref()).collect::<Vec<_>>();
         assert_eq!(
             strings,
             [

@@ -1,4 +1,4 @@
-use super::Language;
+use super::{Language, Mode};
 
 impl Language {
     /// Creates a language parser for JSON
@@ -7,8 +7,9 @@ impl Language {
             name: "json",
             language: tree_sitter_json::language(),
             extensions: &["json"],
-            tree_sitter_types: &["string_content"],
-            parser: None,
+            parser: Mode::Generic {
+                tree_sitter_types: &["string_content"],
+            },
         }
     }
 }

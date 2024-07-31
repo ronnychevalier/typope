@@ -1,4 +1,4 @@
-use super::Language;
+use super::{Language, Mode};
 
 impl Language {
     /// Creates a language parser for Go
@@ -7,8 +7,9 @@ impl Language {
             name: "go",
             language: tree_sitter_go::language(),
             extensions: &["go"],
-            tree_sitter_types: &["interpreted_string_literal"],
-            parser: None,
+            parser: Mode::Generic {
+                tree_sitter_types: &["interpreted_string_literal"],
+            },
         }
     }
 }
