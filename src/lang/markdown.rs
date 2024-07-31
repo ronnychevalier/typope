@@ -31,7 +31,7 @@ impl ParsedMarkdown {
 }
 
 impl Parsed for ParsedMarkdown {
-    fn strings<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+    fn lintable_nodes<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
         Box::new(IterMarkdown::new(self))
     }
 }
@@ -113,7 +113,7 @@ what about this
 hello
 "#;
         let parsed = ParsedMarkdown::new(markdown).unwrap();
-        let mut iter = parsed.strings();
+        let mut iter = parsed.lintable_nodes();
         let node = iter.next().unwrap();
         assert_eq!(
             node.lintable_bytes(markdown.as_bytes()).collect::<Vec<_>>(),

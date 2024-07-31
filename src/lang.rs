@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::hash::Hash;
@@ -213,6 +214,17 @@ impl<'t> LintableNode<'t> {
             .filter_map(move |range| bytes.get(range))
     }
 
+    /// Returns an iterator over the strings of the node that have not been ignored
+    pub fn lintable_strings<'a, 'b>(
+        &'a self,
+        bytes: &'b [u8],
+    ) -> impl Iterator<Item = Cow<'a, str>> + 'a
+    where
+        'b: 'a,
+    {
+        self.lintable_bytes(bytes).map(String::from_utf8_lossy)
+    }
+
     /// Byte offset where this node start
     pub fn start_byte(&self) -> usize {
         self.node.start_byte()
@@ -240,8 +252,17 @@ impl<'t> From<Node<'t>> for LintableNode<'t> {
 
 /// Type that represents a file that has been parsed
 pub trait Parsed {
-    /// Returns an iterator over the strings found in the file based on the language grammar
-    fn strings<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
+    /// Returns an iterator over the lintable nodes based on the language grammar
+    fn lintable_nodes<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't>;
+
+    /// Returns an iterator over the strings found in the source based on the language grammar
+    fn strings<'t>(&'t self, source: &'t [u8]) -> Box<dyn Iterator<Item = String> + 't> {
+        Box::new(self.lintable_nodes().flat_map(|node| {
+            node.lintable_strings(source)
+                .map(|s| s.into_owned())
+                .collect::<Vec<_>>()
+        }))
+    }
 }
 
 struct ParsedGeneric {
@@ -250,7 +271,7 @@ struct ParsedGeneric {
 }
 
 impl Parsed for ParsedGeneric {
-    fn strings<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
+    fn lintable_nodes<'t>(&'t self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
         Box::new(Iter::new(self))
     }
 }

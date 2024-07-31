@@ -114,7 +114,7 @@ pub struct Iter<'t> {
 impl<'t> Iter<'t> {
     fn new(linter: &'t Linter) -> Self {
         Self {
-            strings: linter.parsed.strings(),
+            strings: linter.parsed.lintable_nodes(),
             source: linter.source.clone(),
             typos: vec![],
             rules: &linter.rules,
@@ -147,21 +147,22 @@ impl Iterator for Iter<'_> {
 
             let offset = node.start_byte();
             let typos = node
-                .lintable_bytes(self.source.inner())
-                .filter_map(|bytes| {
-                    let string = String::from_utf8_lossy(bytes);
+                .lintable_strings(self.source.inner())
+                .filter_map(|string| {
                     let ignored = self.ignore_re.iter().any(|re| re.is_match(&string));
                     if ignored {
                         return None;
                     }
 
                     let source = self.source.clone();
-                    let typos = self.rules.iter().flat_map(|rule| rule.check(bytes)).map(
-                        move |mut typo| {
+                    let typos = self
+                        .rules
+                        .iter()
+                        .flat_map(move |rule| rule.check(string.as_bytes()))
+                        .map(move |mut typo| {
                             typo.with_source(source.clone(), offset);
                             typo
-                        },
-                    );
+                        });
 
                     Some(Box::new(typos))
                 })
