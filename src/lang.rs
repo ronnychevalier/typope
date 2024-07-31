@@ -327,43 +327,18 @@ struct ParsedGeneric {
 
 impl Parsed for ParsedGeneric {
     fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
-        Box::new(Iter::new(self))
-    }
-}
+        Box::new(
+            PreorderTraversal::from(self.tree.walk()).filter_map(|node| {
+                if node.byte_range().len() <= 3 {
+                    return None;
+                }
 
-/// Generic iterator over the strings found in a file based on the language grammar.
-///
-/// It ignores strings with a length less than or equal to 3.
-pub struct Iter<'t> {
-    traversal: PreorderTraversal<'t>,
-    tree_sitter_types: &'static [&'static str],
-}
+                if !self.tree_sitter_types.contains(&node.kind()) {
+                    return None;
+                }
 
-impl<'t> Iter<'t> {
-    fn new(parsed: &'t ParsedGeneric) -> Self {
-        Self {
-            traversal: PreorderTraversal::from(parsed.tree.walk()),
-            tree_sitter_types: parsed.tree_sitter_types,
-        }
-    }
-}
-
-impl<'t> Iterator for Iter<'t> {
-    type Item = LintableNode<'t>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let node = self.traversal.next().map(LintableNode::from)?;
-            let kind = node.kind();
-            if node.byte_range().len() <= 3 {
-                continue;
-            }
-
-            if !self.tree_sitter_types.contains(&kind) {
-                continue;
-            }
-
-            return Some(node);
-        }
+                Some(LintableNode::from(node))
+            }),
+        )
     }
 }
