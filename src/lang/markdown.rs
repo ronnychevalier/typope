@@ -10,18 +10,6 @@ use super::{Language, LintableNode, Parsed};
 
 const TREE_SITTER_TYPES: &[&str] = &["inline"];
 
-pub fn lang() -> Language {
-    Language {
-        name: "markdown",
-        language: tree_sitter_md::language(),
-        extensions: &["md"],
-        tree_sitter_types: TREE_SITTER_TYPES,
-        parser: Some(Box::new(move |text| {
-            Ok(Box::new(ParsedMarkdown::new(text)?))
-        })),
-    }
-}
-
 /// Parser for Markdown that helps to ignore text in code span
 struct ParsedMarkdown {
     tree: MarkdownTree,
@@ -90,6 +78,21 @@ impl<'t> Iterator for IterMarkdown<'t> {
             let node = node.ignore_children_ranges(|node| node.kind() == "code_span");
 
             return Some(node);
+        }
+    }
+}
+
+impl Language {
+    /// Creates a language parser for Markdown
+    pub fn markdown() -> Self {
+        Self {
+            name: "markdown",
+            language: tree_sitter_md::language(),
+            extensions: &["md"],
+            tree_sitter_types: TREE_SITTER_TYPES,
+            parser: Some(Box::new(move |text| {
+                Ok(Box::new(ParsedMarkdown::new(text)?))
+            })),
         }
     }
 }

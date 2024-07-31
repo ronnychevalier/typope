@@ -7,8 +7,24 @@ use tree_sitter::{Node, Parser, Tree};
 
 use crate::tree::PreorderTraversal;
 
+#[cfg(feature = "lang-c")]
+mod c;
+#[cfg(feature = "lang-cpp")]
+mod cpp;
+#[cfg(feature = "lang-go")]
+mod go;
+#[cfg(feature = "lang-json")]
+mod json;
 #[cfg(feature = "lang-markdown")]
 mod markdown;
+#[cfg(feature = "lang-python")]
+mod python;
+#[cfg(feature = "lang-rust")]
+mod rust;
+#[cfg(feature = "lang-toml")]
+mod toml;
+#[cfg(feature = "lang-yaml")]
+mod yaml;
 
 struct Mapping {
     lang_from_extensions: HashMap<&'static OsStr, Arc<Language>>,
@@ -123,108 +139,6 @@ impl Language {
                 tree_sitter_types: self.tree_sitter_types,
             }))
         }
-    }
-
-    /// Creates a language parser for Rust
-    #[cfg(feature = "lang-rust")]
-    pub fn rust() -> Self {
-        Self {
-            name: "rust",
-            language: tree_sitter_rust::language(),
-            extensions: &["rs"],
-            tree_sitter_types: &["string_content"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for C++
-    #[cfg(feature = "lang-cpp")]
-    pub fn cpp() -> Self {
-        Self {
-            name: "cpp",
-            language: tree_sitter_cpp::language(),
-            extensions: &["cpp", "cc", "hpp", "hh"],
-            tree_sitter_types: &["string_content"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for C
-    #[cfg(feature = "lang-c")]
-    pub fn c() -> Self {
-        Self {
-            name: "c",
-            language: tree_sitter_c::language(),
-            extensions: &["c", "h"],
-            tree_sitter_types: &["string_content"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for Go
-    #[cfg(feature = "lang-go")]
-    pub fn go() -> Self {
-        Self {
-            name: "go",
-            language: tree_sitter_go::language(),
-            extensions: &["go"],
-            tree_sitter_types: &["interpreted_string_literal"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for Python
-    #[cfg(feature = "lang-python")]
-    pub fn python() -> Self {
-        Self {
-            name: "python",
-            language: tree_sitter_python::language(),
-            extensions: &["py"],
-            tree_sitter_types: &["string", "concatenated_string"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for TOML
-    #[cfg(feature = "lang-toml")]
-    pub fn toml() -> Self {
-        Self {
-            name: "toml",
-            language: tree_sitter_toml_ng::language(),
-            extensions: &["toml"],
-            tree_sitter_types: &["string"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for YAML
-    #[cfg(feature = "lang-yaml")]
-    pub fn yaml() -> Self {
-        Self {
-            name: "yaml",
-            language: tree_sitter_yaml::language(),
-            extensions: &["yml", "yaml"],
-            tree_sitter_types: &["string_scalar"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for JSON
-    #[cfg(feature = "lang-json")]
-    pub fn json() -> Self {
-        Self {
-            name: "json",
-            language: tree_sitter_json::language(),
-            extensions: &["json"],
-            tree_sitter_types: &["string_content"],
-            parser: None,
-        }
-    }
-
-    /// Creates a language parser for Markdown
-    #[cfg(feature = "lang-markdown")]
-    pub fn markdown() -> Self {
-        markdown::lang()
     }
 }
 
