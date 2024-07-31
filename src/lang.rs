@@ -75,13 +75,17 @@ static MAPPING: LazyLock<Mapping> = LazyLock::new(Mapping::build);
 
 type CustomParser = Box<dyn Fn(&[u8]) -> anyhow::Result<Box<dyn Parsed>> + Send + Sync>;
 
+/// Defines how to parse this language to find relevant strings
 enum Mode {
+    /// Parse the language using a generic parser that iterates over strings with a given node type
     Generic {
         tree_sitter_types: &'static [&'static str],
     },
 
+    /// Parse the language using a custom parser
     Custom(CustomParser),
 
+    /// Parse the language using a query
     Query(String),
 }
 
@@ -94,7 +98,7 @@ pub struct Language {
 }
 
 impl Language {
-    /// Find the language to parse based on a file extension
+    /// Finds the language to parse based on a file extension
     ///
     /// # Example
     ///
@@ -210,6 +214,7 @@ impl Hash for Language {
     }
 }
 
+/// A string that can be checked with its offset within its source
 #[derive(PartialEq, Eq, Debug)]
 pub struct LintableString {
     pub(crate) offset: usize,
@@ -217,16 +222,18 @@ pub struct LintableString {
 }
 
 impl LintableString {
+    /// Returns the string that can be checked for typos
     pub fn as_str(&self) -> &str {
         &self.value
     }
 
+    /// Offset of the string within its source
     pub fn offset(&self) -> usize {
         self.offset
     }
 }
 
-/// Wrapper around a [Node] to make it easier to ignore ranges of bytes based on some children
+/// Wrapper around a [`Node`] to make it easier to ignore ranges of bytes based on some children
 pub struct LintableNode<'t> {
     node: Node<'t>,
     ignore_nodes: Vec<Node<'t>>,

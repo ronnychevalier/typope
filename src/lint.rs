@@ -68,6 +68,7 @@ impl Linter {
         })
     }
 
+    /// Extends the list of regexes that prevents some strings from being checked
     pub fn extend_ignore_re(&mut self, ignore_re: &[regex::Regex]) {
         self.ignore_re.extend_from_slice(ignore_re);
     }

@@ -38,7 +38,7 @@ pub struct TypoSpaceBeforePunctuationMarks {
 }
 
 impl TypoSpaceBeforePunctuationMarks {
-    pub fn new(span: impl Into<SourceSpan>, punctuation_mark: char) -> Self {
+    fn new(span: impl Into<SourceSpan>, punctuation_mark: char) -> Self {
         Self {
             src: None,
             span: span.into(),

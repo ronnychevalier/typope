@@ -12,9 +12,13 @@ use ignore::WalkBuilder;
 
 use crate::lang::Language;
 
+/// List of file names that can contain the configuration
 pub const SUPPORTED_FILE_NAMES: &[&str] =
     &["typos.toml", "_typos.toml", ".typos.toml", "pyproject.toml"];
 
+/// Defines the configuration of the linter.
+///
+/// It is compatible with a subset of the configuration of [`typos`](https://crates.io/crates/typos-cli).
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
@@ -28,18 +32,21 @@ pub struct Config {
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
-pub struct PyprojectTomlConfig {
-    pub tool: PyprojectTomlTool,
+struct PyprojectTomlConfig {
+    tool: PyprojectTomlTool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
-pub struct PyprojectTomlTool {
-    pub typos: Option<Config>,
+struct PyprojectTomlTool {
+    typos: Option<Config>,
 }
 
 impl Config {
+    /// Tries to load a config from a directory.
+    ///
+    /// It looks for the file names listed in [`SUPPORTED_FILE_NAMES`].
     pub fn from_dir(cwd: &Path) -> anyhow::Result<Option<Self>> {
         for file in find_project_files(cwd, SUPPORTED_FILE_NAMES) {
             if let Some(config) = Self::from_file(&file)? {
@@ -50,6 +57,7 @@ impl Config {
         Ok(None)
     }
 
+    /// Loads a config from a file
     pub fn from_file(path: &Path) -> anyhow::Result<Option<Self>> {
         let s = std::fs::read_to_string(path)
             .with_context(|| format!("could not read config at `{}`", path.display()))?;
@@ -70,6 +78,7 @@ impl Config {
         }
     }
 
+    /// Loads a config from TOML
     pub fn from_toml(data: &str) -> anyhow::Result<Self> {
         toml::from_str(data).map_err(Into::into)
     }
@@ -88,6 +97,7 @@ impl Config {
         self.type_.update(&source.type_);
     }
 
+    /// Builds a [`WalkBuilder`] to find files based on the config
     pub fn to_walk_builder(&self, path: &Path) -> WalkBuilder {
         let mut walk = ignore::WalkBuilder::new(path);
         walk.skip_stdout(true)
@@ -119,12 +129,15 @@ impl Config {
     }
 }
 
+/// Defines how to ignore files from being checked by the linter
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct Walk {
+    /// Additional list of regexes to exclude files from being checked
     pub extend_exclude: Vec<String>,
+
     /// Skip hidden files and directories.
     pub ignore_hidden: Option<bool>,
 
@@ -186,22 +199,22 @@ impl Walk {
         }
     }
 
-    pub fn extend_exclude(&self) -> &[String] {
-        &self.extend_exclude
-    }
-
+    /// Whether to skip hidden files and directories
     pub fn ignore_hidden(&self) -> bool {
         self.ignore_hidden.unwrap_or(true)
     }
 
+    /// Whether to respect .ignore files
     pub fn ignore_dot(&self) -> bool {
         self.ignore_dot.or(self.ignore_files).unwrap_or(true)
     }
 
+    /// Whether to respect ignore files in vcs directories
     pub fn ignore_vcs(&self) -> bool {
         self.ignore_vcs.or(self.ignore_files).unwrap_or(true)
     }
 
+    /// Whether to respect global ignore files
     pub fn ignore_global(&self) -> bool {
         self.ignore_global
             .or(self.ignore_vcs)
@@ -209,6 +222,7 @@ impl Walk {
             .unwrap_or(true)
     }
 
+    /// Whether to respect ignore files in parent directories
     pub fn ignore_parent(&self) -> bool {
         self.ignore_parent.or(self.ignore_files).unwrap_or(true)
     }
@@ -243,6 +257,7 @@ pub struct EngineConfig {
     /// Verifying spelling in files.
     pub check_file: Option<bool>,
 
+    /// Additional list of regexes to prevent string from being checked
     #[serde(with = "serde_regex")]
     pub extend_ignore_re: Vec<regex::Regex>,
 }
@@ -275,6 +290,7 @@ impl EngineConfig {
         }
     }
 
+    /// Whether to check this file type
     pub fn check_file(&self) -> bool {
         self.check_file.unwrap_or(true)
     }
