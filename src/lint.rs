@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::sync::Arc;
 
 use miette::{SourceCode, SourceSpan};
 
@@ -50,7 +49,7 @@ impl Linter {
     }
 
     fn new(
-        lang: Arc<Language>,
+        lang: &Language,
         source_content: impl Into<Vec<u8>>,
         source_name: impl AsRef<str>,
     ) -> anyhow::Result<Self> {
@@ -207,7 +206,7 @@ mod tests {
         }
         "#;
         let mut linter =
-            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+            Linter::new(&Language::rust(), rust.as_bytes().to_vec(), "file.rs").unwrap();
 
         let mut typos = linter.iter().collect::<Vec<_>>();
         assert_eq!(typos.len(), 1);
@@ -228,8 +227,7 @@ mod tests {
             anyhow::bail!("failed to do something for the following reason : foobar foo");
         }
         "#;
-        let mut linter =
-            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
         linter.extend_ignore_re(&[regex::Regex::new(r"foobar foo").unwrap()]);
 
         let typos = linter.iter().count();
@@ -244,8 +242,7 @@ mod tests {
             r"a ?regex.that ?match ?something ?"
         }
         "#;
-        let mut linter =
-            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
 
         let typos = linter.iter().count();
         assert_eq!(typos, 0);
@@ -265,8 +262,7 @@ mod tests {
             true
         }
         "#;
-        let mut linter =
-            Linter::new(Language::rust().into(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
 
         let typos = linter.iter().count();
         assert_eq!(typos, 0);
@@ -279,7 +275,7 @@ mod tests {
 Hello mate `this should not trigger the rule : foobar` abc
         "#;
         let mut linter = Linter::new(
-            Language::markdown().into(),
+            &Language::markdown(),
             markdown.as_bytes().to_vec(),
             "file.md",
         )

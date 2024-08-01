@@ -66,8 +66,8 @@ impl Mapping {
         }
     }
 
-    pub fn find_from_extension(&self, extension: &OsStr) -> Option<Arc<Language>> {
-        self.lang_from_extensions.get(extension).map(Arc::clone)
+    pub fn find_from_extension(&self, extension: &OsStr) -> Option<&Language> {
+        self.lang_from_extensions.get(extension).map(AsRef::as_ref)
     }
 }
 
@@ -108,7 +108,7 @@ impl Language {
     /// # use orthotypos::lang::Language;
     /// assert!(Language::from_extension(OsStr::new("rs")).is_some());
     /// ```
-    pub fn from_extension(extension: &OsStr) -> Option<Arc<Self>> {
+    pub fn from_extension(extension: &OsStr) -> Option<&Self> {
         MAPPING.find_from_extension(extension)
     }
 
