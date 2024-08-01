@@ -131,7 +131,6 @@ impl Config {
 
 /// Defines how to ignore files from being checked by the linter
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct Walk {
