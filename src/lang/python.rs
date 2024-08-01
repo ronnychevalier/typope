@@ -8,8 +8,53 @@ impl Language {
             language: tree_sitter_python::language(),
             extensions: &["py"],
             parser: Mode::Generic {
-                tree_sitter_types: &["string", "concatenated_string"],
+                tree_sitter_types: &["string_content"],
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lang::LintableString;
+    use crate::SharedSource;
+
+    use super::Language;
+
+    #[test]
+    fn lintable_strings() {
+        let python = r#"
+s = "abcd"
+d = 1234 # Hehe "foobar"
+s = "abcd" "efgh"
+
+# Comments
+def f():
+    return 'ijkl'
+"#;
+        let python = SharedSource::new("file.py", python.as_bytes().to_vec());
+        let mut parsed = Language::python().parse(&python).unwrap();
+        let strings = parsed.strings(python.as_ref()).collect::<Vec<_>>();
+        assert_eq!(
+            strings,
+            [
+                LintableString {
+                    offset: 6,
+                    value: "abcd".into()
+                },
+                LintableString {
+                    offset: 42,
+                    value: "abcd".into()
+                },
+                LintableString {
+                    offset: 49,
+                    value: "efgh".into()
+                },
+                LintableString {
+                    offset: 88,
+                    value: "ijkl".into()
+                }
+            ]
+        );
     }
 }
