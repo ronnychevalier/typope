@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::hash::Hash;
 use std::sync::{Arc, LazyLock};
 
 use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
@@ -193,24 +192,6 @@ impl Parsed for ParsedQuery {
                 Some(LintableNode::from(capture.node))
             });
         Box::new(nodes)
-    }
-}
-
-impl PartialEq for Language {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.language == other.language
-            && self.extensions == other.extensions
-    }
-}
-
-impl Eq for Language {}
-
-impl Hash for Language {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.language.hash(state);
-        self.extensions.hash(state);
     }
 }
 
