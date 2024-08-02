@@ -6,7 +6,7 @@ impl Language {
         Self {
             name: "cpp",
             language: tree_sitter_cpp::language(),
-            extensions: &["cpp", "cc", "hpp", "hh"],
+            extensions: &["cpp", "cc", "cxx", "hpp", "hh", "hxx"],
             parser: Mode::Generic {
                 tree_sitter_types: &["string_content"],
             },
