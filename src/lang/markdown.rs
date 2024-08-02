@@ -8,8 +8,6 @@ use crate::tree::PreorderTraversal;
 
 use super::{Language, LintableNode, Mode, Parsed};
 
-const TREE_SITTER_TYPES: &[&str] = &["inline"];
-
 /// Parser for Markdown that helps to ignore text in code span
 struct ParsedMarkdown {
     tree: MarkdownTree,
@@ -25,7 +23,7 @@ impl ParsedMarkdown {
 
         Ok(Self {
             tree,
-            tree_sitter_types: TREE_SITTER_TYPES,
+            tree_sitter_types: &["inline"],
         })
     }
 }
@@ -98,12 +96,13 @@ impl Language {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::{LintableString, Parsed};
+    use crate::lang::LintableString;
+    use crate::SharedSource;
 
-    use super::ParsedMarkdown;
+    use super::Language;
 
     #[test]
-    fn lintable_bytes() {
+    fn lintable_strings() {
         let markdown = r#"# Hello
 This is a text `with some` code_span in `various` places
 ```
@@ -111,23 +110,16 @@ what about this
 ```
 hello
 "#;
-        let mut parsed = ParsedMarkdown::new(markdown).unwrap();
-        let mut iter = parsed.lintable_nodes();
-        let node = iter.next().unwrap();
+        let markdown = SharedSource::new("file.md", markdown.as_bytes().to_vec());
+        let mut parsed = Language::markdown().parse(&markdown).unwrap();
+        let strings = parsed.strings(markdown.as_ref()).collect::<Vec<_>>();
         assert_eq!(
-            node.lintable_strings(markdown.as_bytes())
-                .collect::<Vec<_>>(),
-            [LintableString {
-                offset: 2,
-                value: "Hello".into()
-            }]
-        );
-
-        let node = iter.next().unwrap();
-        assert_eq!(
-            node.lintable_strings(markdown.as_bytes())
-                .collect::<Vec<_>>(),
+            strings,
             [
+                LintableString {
+                    offset: 2,
+                    value: "Hello".into()
+                },
                 LintableString {
                     offset: 8,
                     value: "This is a text ".into()
@@ -140,19 +132,11 @@ hello
                     offset: 57,
                     value: " places".into()
                 },
+                LintableString {
+                    offset: 89,
+                    value: "hello".into()
+                }
             ]
         );
-
-        let node = iter.next().unwrap();
-        assert_eq!(
-            node.lintable_strings(markdown.as_bytes())
-                .collect::<Vec<_>>(),
-            [LintableString {
-                offset: 89,
-                value: "hello".into()
-            }]
-        );
-
-        assert!(iter.next().is_none());
     }
 }
