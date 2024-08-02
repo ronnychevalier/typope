@@ -65,7 +65,7 @@ pub struct SpaceBeforePunctuationMarks;
 
 impl Rule for SpaceBeforePunctuationMarks {
     #[allow(clippy::type_complexity)]
-    fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>> {
+    fn check(&self, bytes: &[u8]) -> Vec<Box<dyn Typo>> {
         fn space_before_colon<'s>(
             input: &mut Located<&'s [u8]>,
         ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
@@ -74,7 +74,6 @@ impl Rule for SpaceBeforePunctuationMarks {
 
             // Handles cases when we have an emoji like `:fire:` or `:)`.
             // In such cases, we should not mark them as a typo.
-            // not(terminated(alpha1, ':')).parse_next(input)?;
             not(none_of([' '])).parse_next(input)?;
 
             Ok((':', range))
@@ -102,6 +101,8 @@ impl Rule for SpaceBeforePunctuationMarks {
                 )),
             ))
             .parse_next(input)?;
+            // Can be found in code generating C macros (e.g., `#elif !defined(condition)`)
+            not("defined(").parse_next(input)?;
 
             Ok(('!', range))
         }
@@ -159,7 +160,7 @@ impl Rule for SpaceBeforePunctuationMarks {
         }
 
         repeat(0.., locate_space_before_punctuation)
-            .parse_next(&mut Located::new(s))
+            .parse_next(&mut Located::new(bytes))
             .unwrap_or_default()
     }
 }
@@ -320,6 +321,13 @@ mod tests {
     fn looks_like_shell() {
         assert!(SpaceBeforePunctuationMarks
             .check(br"[ ! -e /run/dbus ] || mount -t tmpfs none /run/dbus")
+            .is_empty());
+    }
+
+    #[test]
+    fn looks_like_c_macro_generated() {
+        assert!(SpaceBeforePunctuationMarks
+            .check(br"#  elif !defined(missing_arch_template)")
             .is_empty());
     }
 }
