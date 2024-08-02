@@ -19,6 +19,19 @@ pub const SUPPORTED_FILE_NAMES: &[&str] =
 /// Defines the configuration of the linter.
 ///
 /// It is compatible with a subset of the configuration of [`typos`](https://crates.io/crates/typos-cli).
+///
+/// # Example
+///
+/// ```toml
+/// [files]
+/// ignore-hidden = false
+///
+/// [default]
+/// extend-ignore-re = ["some regex.*rrrregex"]
+///
+/// [type.cpp]
+/// check-file = false
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
@@ -130,6 +143,13 @@ impl Config {
 }
 
 /// Defines how to ignore files from being checked by the linter
+///
+/// # Example
+///
+/// ```toml
+/// [files]
+/// ignore-hidden = false
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
@@ -227,6 +247,16 @@ impl Walk {
     }
 }
 
+/// File type specific settings.
+///
+/// It helps a user define settings that only apply to some file types.
+///
+/// # Example
+///
+/// ```toml
+/// [type.rust]
+/// check-file = false
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(transparent)]
@@ -307,7 +337,58 @@ fn find_project_files<'a>(
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use std::path::Path;
+
+    use tempfile::{tempdir, NamedTempFile};
+
+    use super::{Config, EngineConfig};
+
+    #[test]
+    fn from_file() {
+        let config = r#"
+[files]
+ignore-hidden = false
+
+[default]
+extend-ignore-re = ["some regex.*rrrregex"]
+
+[type.cpp]
+check-file = false
+        "#;
+        let file = NamedTempFile::new().unwrap();
+        std::fs::write(file.path(), config).unwrap();
+        let config = Config::from_file(file.path()).unwrap().unwrap();
+        assert!(!config.files.ignore_hidden());
+    }
+
+    #[test]
+    fn from_file_invalid() {
+        let file = NamedTempFile::new().unwrap();
+        std::fs::write(file.path(), "invaliddddddd").unwrap();
+        Config::from_file(file.path()).unwrap_err();
+        Config::from_file(Path::new("file that does not exist.toml")).unwrap_err();
+    }
+
+    #[test]
+    fn from_dir() {
+        let config = r#"
+[files]
+ignore-hidden = false
+
+[default]
+extend-ignore-re = ["some regex.*rrrregex"]
+
+[type.cpp]
+check-file = false
+        "#;
+        let dir = tempdir().unwrap();
+        assert!(Config::from_dir(dir.path()).unwrap().is_none());
+
+        let typos_config_file = dir.path().join(".typos.toml");
+        std::fs::write(&typos_config_file, config).unwrap();
+        let config = Config::from_dir(dir.path()).unwrap().unwrap();
+        assert!(!config.files.ignore_hidden())
+    }
 
     #[test]
     fn test_update_from_nothing() {
