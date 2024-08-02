@@ -24,6 +24,11 @@ mod tests {
     use super::Language;
 
     #[test]
+    fn exists_in_iter() {
+        assert!(Language::iter().any(|lang| lang.name() == "c"));
+    }
+
+    #[test]
     fn find_from_extensions() {
         for ext in Language::c().extensions() {
             assert_eq!(

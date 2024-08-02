@@ -24,6 +24,11 @@ mod tests {
     use super::Language;
 
     #[test]
+    fn exists_in_iter() {
+        assert!(Language::iter().any(|lang| lang.name() == "yaml"));
+    }
+
+    #[test]
     fn find_from_extensions() {
         for ext in Language::yaml().extensions() {
             assert_eq!(

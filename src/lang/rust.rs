@@ -22,6 +22,11 @@ mod tests {
     use super::Language;
 
     #[test]
+    fn exists_in_iter() {
+        assert!(Language::iter().any(|lang| lang.name() == "rust"));
+    }
+
+    #[test]
     fn find_from_extensions() {
         for ext in Language::rust().extensions() {
             assert_eq!(
