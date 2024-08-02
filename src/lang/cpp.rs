@@ -13,3 +13,52 @@ impl Language {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::lang::LintableString;
+    use crate::SharedSource;
+
+    use super::Language;
+
+    #[test]
+    fn lintable_strings() {
+        let cpp = r#"
+#include <iostream>
+#include <string>
+
+#define MACRO "not handled by the parser yet"
+
+std::string f() {
+    return std::string("abcdef" MACRO);
+}
+
+int main() {
+    std::string s("foobar");
+
+    std::cout << "Hello world!" << s << std::endl;
+    return 0;
+}
+"#;
+        let cpp = SharedSource::new("file.cpp", cpp.as_bytes().to_vec());
+        let mut parsed = Language::cpp().parse(&cpp).unwrap();
+        let strings = parsed.strings(cpp.as_ref()).collect::<Vec<_>>();
+        assert_eq!(
+            strings,
+            [
+                LintableString {
+                    offset: 129,
+                    value: "abcdef".into()
+                },
+                LintableString {
+                    offset: 180,
+                    value: "foobar".into()
+                },
+                LintableString {
+                    offset: 209,
+                    value: "Hello world!".into()
+                }
+            ]
+        );
+    }
+}
