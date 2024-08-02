@@ -7,14 +7,9 @@ typographical errors, and other mistakes that are not covered by tools
 like [`typos`][typos] to ensure that your source code is
 free from typographical heresy.
 
-**This tool is still experimental.**
-
-The *goal* is to make the number of false positives low so that
-it can be integrated into a CI, like [`typos`][typos].
-
 ## Rules
 
-The tool only has one rule at the moment:
+`typope` has only one rule at the moment:
 
 - [No space before a punctuation mark](./src/lint/punctuation.rs)
 
@@ -24,6 +19,7 @@ The tool only has one rule at the moment:
 
 - Rust
 - Go
+- Kotlin
 - Python
 - C++
 - C

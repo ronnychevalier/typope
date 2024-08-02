@@ -15,6 +15,8 @@ mod cpp;
 mod go;
 #[cfg(feature = "lang-json")]
 mod json;
+#[cfg(feature = "lang-kotlin")]
+mod kotlin;
 #[cfg(feature = "lang-markdown")]
 mod markdown;
 #[cfg(feature = "lang-python")]
@@ -52,6 +54,7 @@ impl Mapping {
         lang!(rust, "lang-rust");
         lang!(c, "lang-c");
         lang!(cpp, "lang-cpp");
+        lang!(kotlin, "lang-kotlin");
         lang!(go, "lang-go");
         lang!(python, "lang-python");
         lang!(toml, "lang-toml");

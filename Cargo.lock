@@ -696,6 +696,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-kotlin"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d4e35f3780ff02706f0cbe488b822c69d419bf69dc7d67ab4dfd8722b28771c"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
 name = "tree-sitter-md"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -765,6 +775,7 @@ dependencies = [
  "tree-sitter-cpp",
  "tree-sitter-go",
  "tree-sitter-json",
+ "tree-sitter-kotlin",
  "tree-sitter-md",
  "tree-sitter-python",
  "tree-sitter-rust",
