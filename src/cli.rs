@@ -8,10 +8,10 @@ use ignore::DirEntry;
 
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use orthotypos::config;
-use orthotypos::config::Config;
-use orthotypos::lang::Language;
-use orthotypos::lint::Linter;
+use typope::config;
+use typope::config::Config;
+use typope::lang::Language;
+use typope::lint::Linter;
 
 #[derive(Copy, Clone, PartialEq, Eq, clap::ValueEnum, Default)]
 pub enum Format {

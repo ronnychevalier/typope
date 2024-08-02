@@ -1,11 +1,13 @@
 [package]
-name = "orthotypos"
+name = "typope"
 edition = "2021"
-description = "Source code orthotypography checker"
+description = "Pedantic source code checker for orthotypography mistakes and other typographical errors"
 publish = false
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 rust-version = "1.80.0"
+categories = ["command-line-utilities", "development-tools", "text-processing"]
+keywords = ["typography", "development", "spelling", "pedantic"]
 
 [features]
 default = ["lang-all"]

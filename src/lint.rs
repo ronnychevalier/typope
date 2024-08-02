@@ -77,7 +77,7 @@ impl Linter {
     /// # Example
     ///
     /// ```no_run
-    /// # use orthotypos::lint::Linter;
+    /// # use typope::lint::Linter;
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let Some(mut linter) = Linter::from_path("file.rs")? else { return Ok(()); };
     /// for typo in linter.iter() {
@@ -219,7 +219,7 @@ mod tests {
         let typo = typos.pop().unwrap();
         assert_eq!(
             format!("{}", typo.code().unwrap()),
-            "orthotypos::space-before-punctuation-mark"
+            "typope::space-before-punctuation-mark"
         );
         assert_eq!(typo.span(), (141, 1).into());
     }
@@ -243,7 +243,7 @@ mod tests {
         let report: miette::Report = typo.into();
         assert_eq!(
             format!("{}", report.code().unwrap()),
-            "orthotypos::space-before-punctuation-mark"
+            "typope::space-before-punctuation-mark"
         );
         assert_eq!(
             report.labels().unwrap().collect::<Vec<_>>(),
@@ -283,7 +283,7 @@ mod tests {
         let typo = typos.pop().unwrap();
         assert_eq!(
             format!("{}", typo.code().unwrap()),
-            "orthotypos::space-before-punctuation-mark"
+            "typope::space-before-punctuation-mark"
         );
         assert_eq!(typo.span(), (141, 1).into());
     }

@@ -375,34 +375,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orthotypos"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "clap",
- "ignore",
- "miette",
- "rayon",
- "regex",
- "serde",
- "serde_regex",
- "tempfile",
- "thiserror",
- "toml",
- "tree-sitter",
- "tree-sitter-c",
- "tree-sitter-cpp",
- "tree-sitter-go",
- "tree-sitter-json",
- "tree-sitter-md",
- "tree-sitter-python",
- "tree-sitter-rust",
- "tree-sitter-toml-ng",
- "tree-sitter-yaml",
- "winnow",
-]
-
-[[package]]
 name = "owo-colors"
 version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -771,6 +743,34 @@ checksum = "aad27ec46ad343d8b514f64dd3fdffb478c592ece561b6c935d90ef55589c6b6"
 dependencies = [
  "cc",
  "tree-sitter",
+]
+
+[[package]]
+name = "typope"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "ignore",
+ "miette",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_regex",
+ "tempfile",
+ "thiserror",
+ "toml",
+ "tree-sitter",
+ "tree-sitter-c",
+ "tree-sitter-cpp",
+ "tree-sitter-go",
+ "tree-sitter-json",
+ "tree-sitter-md",
+ "tree-sitter-python",
+ "tree-sitter-rust",
+ "tree-sitter-toml-ng",
+ "tree-sitter-yaml",
+ "winnow",
 ]
 
 [[package]]

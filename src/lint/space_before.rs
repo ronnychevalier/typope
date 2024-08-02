@@ -26,7 +26,7 @@ use super::{Rule, Typo};
 /// - `here is a list of things :`, should be `here is a list of things:`
 #[derive(Error, Debug, Diagnostic)]
 #[error("In English typography there is no space before a punctuation mark")]
-#[diagnostic(code("orthotypos::space-before-punctuation-mark"), url(docsrs))]
+#[diagnostic(code("typope::space-before-punctuation-mark"), url(docsrs))]
 pub struct TypoSpaceBeforePunctuationMarks {
     #[source_code]
     src: Option<SharedSource>,

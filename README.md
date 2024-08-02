@@ -1,8 +1,11 @@
-# `orthotypos`
+# `typope`
 
 ![MSRV][rustc-image]
 
-Tool to find [orthotypograhy][typographical-syntax] mistakes.
+Pedantic tool to find [orthotypography][typographical-syntax] mistakes,
+typographical errors, and other mistakes that are not covered by tools
+like [`typos`][typos] to ensure that your source code is
+free from typographical heresy.
 
 **This tool is still experimental.**
 
@@ -32,4 +35,4 @@ additional terms or conditions.
 
 [typos]: https://github.com/crate-ci/typos
 [typographical-syntax]: https://en.wikipedia.org/wiki/Typographical_syntax
-[rustc-image]: https://img.shields.io/badge/rustc-1.79+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.80+-blue.svg

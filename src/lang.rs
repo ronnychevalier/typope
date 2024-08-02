@@ -104,7 +104,7 @@ impl Language {
     /// ```
     /// # use std::ffi::OsStr;
     /// #
-    /// # use orthotypos::lang::Language;
+    /// # use typope::lang::Language;
     /// assert!(Language::from_extension(OsStr::new("rs")).is_some());
     /// ```
     pub fn from_extension(extension: &OsStr) -> Option<&Self> {
@@ -118,7 +118,7 @@ impl Language {
     /// ```
     /// # use std::ffi::OsStr;
     /// #
-    /// # use orthotypos::lang::Language;
+    /// # use typope::lang::Language;
     /// let rust = Language::from_extension(OsStr::new("rs")).unwrap();
     /// assert_eq!(rust.extensions(), &["rs"]);
     /// ```
