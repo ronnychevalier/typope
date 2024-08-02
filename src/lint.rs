@@ -196,6 +196,13 @@ mod tests {
 
     use super::Linter;
 
+    #[test]
+    fn from_path_unknown_extension() {
+        assert!(Linter::from_path("file.with_unknown_extension")
+            .unwrap()
+            .is_none());
+    }
+
     #[cfg(feature = "lang-rust")]
     #[test]
     fn typo_rust_string() {
@@ -205,8 +212,30 @@ mod tests {
             anyhow::bail!("failed to do something for the following reason : foobar foo");
         }
         "#;
-        let mut linter =
-            Linter::new(&Language::rust(), rust.as_bytes().to_vec(), "file.rs").unwrap();
+        let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
+
+        let mut typos = linter.iter().collect::<Vec<_>>();
+        assert_eq!(typos.len(), 1);
+        let typo = typos.pop().unwrap();
+        assert_eq!(
+            format!("{}", typo.code().unwrap()),
+            "orthotypos::space-before-punctuation-mark"
+        );
+        assert_eq!(typo.span(), (141, 1).into());
+    }
+
+    #[cfg(feature = "lang-rust")]
+    #[test]
+    fn typo_rust_from_path() {
+        let rust = r#"
+        /// Doc comment
+        fn func() -> anyhow::Result<()> {
+            anyhow::bail!("failed to do something for the following reason : foobar foo");
+        }
+        "#;
+        let file = tempfile::Builder::new().suffix(".rs").tempfile().unwrap();
+        std::fs::write(file.path(), rust).unwrap();
+        let mut linter = Linter::from_path(file.path()).unwrap().unwrap();
 
         let mut typos = linter.iter().collect::<Vec<_>>();
         assert_eq!(typos.len(), 1);
