@@ -18,6 +18,27 @@ The tool only has one rule at the moment:
 
 - [No space before a punctuation mark](./src/lint/punctuation.rs)
 
+## Supported Languages
+
+`typope` relies on [`tree-sitter`][tree-sitter] to parse the following languages:
+
+- Rust
+- Go
+- Python
+- C++
+- C
+- Markdown
+- YAML
+- TOML
+- JSON
+
+Many more could be supported if you are motivated to open a PR :)
+
+To minimize false positives, only typos found in literal strings (e.g., `"this is a string"`)
+are detected. It means typos in comments are ignored for the moment.
+Raw literal strings (e.g., in Rust this would be `r"raw string"`) are ignored on purpose.
+In Markdown, code blocks or code spans (e.g., `` `example` ``) are ignored on purpose.
+
 ## License
 
 Licensed under either of
@@ -34,5 +55,6 @@ for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 additional terms or conditions.
 
 [typos]: https://github.com/crate-ci/typos
+[tree-sitter]: https://tree-sitter.github.io/tree-sitter/
 [typographical-syntax]: https://en.wikipedia.org/wiki/Typographical_syntax
 [rustc-image]: https://img.shields.io/badge/rustc-1.80+-blue.svg
