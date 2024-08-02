@@ -4,6 +4,7 @@ use miette::{Diagnostic, SourceSpan};
 
 use thiserror::Error;
 
+use winnow::ascii::alphanumeric1;
 use winnow::combinator::{alt, delimited, not, preceded, repeat, repeat_till, terminated};
 use winnow::error::InputError;
 use winnow::token::{none_of, one_of, take};
@@ -115,6 +116,8 @@ impl Rule for SpaceBeforePunctuationMarks {
 
             // Do not mark strings like ` ?Sized` as a typo: it has a meaning in Rust
             not("Sized").parse_next(input)?;
+            // Can be found in a text that gives an example of the parameters to use in a URL (e.g., `add ?param=2&param2=40 to the URL`)
+            not(terminated(alphanumeric1, '=')).parse_next(input)?;
 
             Ok(('?', range))
         }
@@ -192,7 +195,9 @@ mod tests {
 
     #[test]
     fn typo_question_mark() {
-        let mut typos = SpaceBeforePunctuationMarks.check(br"footest ? foobar");
+        let mut typos = SpaceBeforePunctuationMarks.check(br"footest ? foobar ?fooooo");
+        let typo = typos.pop().unwrap();
+        assert_eq!(typo.span(), (16, 1).into());
         let typo = typos.pop().unwrap();
         assert_eq!(typo.span(), (7, 1).into());
         assert!(typos.is_empty());
@@ -328,6 +333,13 @@ mod tests {
     fn looks_like_c_macro_generated() {
         assert!(SpaceBeforePunctuationMarks
             .check(br"#  elif !defined(missing_arch_template)")
+            .is_empty());
+    }
+
+    #[test]
+    fn looks_like_url_parameter() {
+        assert!(SpaceBeforePunctuationMarks
+            .check(br"Add ?var=1&var2=44 to the URL")
             .is_empty());
     }
 }
