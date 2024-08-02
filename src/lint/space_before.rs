@@ -64,6 +64,7 @@ impl Typo for TypoSpaceBeforePunctuationMarks {
 pub struct SpaceBeforePunctuationMarks;
 
 impl Rule for SpaceBeforePunctuationMarks {
+    #[allow(clippy::type_complexity)]
     fn check(&self, s: &[u8]) -> Vec<Box<dyn Typo>> {
         fn space_before_colon<'s>(
             input: &mut Located<&'s [u8]>,

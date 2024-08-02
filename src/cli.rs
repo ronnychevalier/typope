@@ -1,7 +1,6 @@
 use std::fs::Metadata;
-use std::path::{Path, PathBuf};
-
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 
@@ -76,7 +75,7 @@ impl Args {
         }
         if self.type_list {
             for lang in Language::iter() {
-                println!("{}: {}", lang.name(), lang.extensions().join(", "))
+                println!("{}: {}", lang.name(), lang.extensions().join(", "));
             }
             return Ok(());
         }
@@ -141,7 +140,7 @@ impl Args {
     ) -> anyhow::Result<impl Iterator<Item = DirEntry> + 'a> {
         let mut overrides = ignore::overrides::OverrideBuilder::new(".");
         for pattern in &config.files.extend_exclude {
-            overrides.add(&format!("!{}", pattern))?;
+            overrides.add(&format!("!{pattern}"))?;
         }
         let overrides = overrides.build()?;
 
