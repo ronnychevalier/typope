@@ -330,3 +330,15 @@ impl Parsed for ParsedGeneric {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+
+    use super::Language;
+
+    #[test]
+    fn from_extension_invalid() {
+        assert!(Language::from_extension(OsStr::new("extension that does not exist")).is_none());
+    }
+}

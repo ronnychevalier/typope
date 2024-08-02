@@ -16,10 +16,22 @@ impl Language {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsStr;
+
     use crate::lang::LintableString;
     use crate::SharedSource;
 
     use super::Language;
+
+    #[test]
+    fn find_from_extensions() {
+        for ext in Language::go().extensions() {
+            assert_eq!(
+                "go",
+                Language::from_extension(OsStr::new(ext)).unwrap().name()
+            );
+        }
+    }
 
     #[test]
     fn lintable_strings() {
