@@ -226,6 +226,47 @@ mod tests {
 
     #[cfg(feature = "lang-rust")]
     #[test]
+    fn typo_rust_into_report() {
+        use miette::LabeledSpan;
+
+        let rust = r#"
+        /// Doc comment
+        fn func() -> anyhow::Result<()> {
+            anyhow::bail!("failed to do something for the following reason : foobar foo");
+        }
+        "#;
+        let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
+
+        let mut typos = linter.iter().collect::<Vec<_>>();
+        assert_eq!(typos.len(), 1);
+        let typo = typos.pop().unwrap();
+        let report: miette::Report = typo.into();
+        assert_eq!(
+            format!("{}", report.code().unwrap()),
+            "orthotypos::space-before-punctuation-mark"
+        );
+        assert_eq!(
+            report.labels().unwrap().collect::<Vec<_>>(),
+            [LabeledSpan::new(Some("Invalid space here".into()), 141, 1)]
+        );
+        assert_eq!(
+            report.help().unwrap().to_string(),
+            "remove the space before `:`"
+        );
+        assert!(report
+            .url()
+            .unwrap()
+            .to_string()
+            .starts_with("https://docs.rs"));
+        assert!(report.source_code().is_some());
+        assert!(report.diagnostic_source().is_none());
+        assert_eq!(report.severity(), None);
+        assert!(report.related().is_none());
+        assert!(report.source().is_none());
+    }
+
+    #[cfg(feature = "lang-rust")]
+    #[test]
     fn typo_rust_from_path() {
         let rust = r#"
         /// Doc comment
