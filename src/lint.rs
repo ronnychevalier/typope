@@ -2,9 +2,9 @@ use std::path::Path;
 
 use miette::{SourceCode, SourceSpan};
 
-pub mod space_before;
+pub mod punctuation;
 
-use self::space_before::SpaceBeforePunctuationMarks;
+use self::punctuation::Punctuation;
 
 use crate::lang::{Language, LintableString, Parsed};
 use crate::SharedSource;
@@ -57,7 +57,7 @@ impl Linter {
         let source = SharedSource::new(source_name, source_content);
         let parsed = lang.parse(&source)?;
 
-        let rules = vec![Box::new(SpaceBeforePunctuationMarks) as Box<dyn Rule>];
+        let rules = vec![Box::new(Punctuation) as Box<dyn Rule>];
 
         Ok(Self {
             parsed,

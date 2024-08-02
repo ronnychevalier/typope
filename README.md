@@ -16,7 +16,7 @@ it can be integrated into a CI, like [`typos`][typos].
 
 The tool only has one rule at the moment:
 
-- [No space before a punctuation mark](./src/lint/space_before.rs)
+- [No space before a punctuation mark](./src/lint/punctuation.rs)
 
 ## License
 
