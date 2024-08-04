@@ -9,6 +9,8 @@ typographical errors, and other mistakes that are not covered by tools
 like [`typos`][typos] to ensure that your source code is
 free from typographical heresy.
 
+This tool is still experimental: you may encounter false positives.
+
 ## Installation
 
 ```bash
