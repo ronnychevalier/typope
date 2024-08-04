@@ -8,6 +8,8 @@ readme = "README.md"
 rust-version = "1.80.0"
 categories = ["command-line-utilities", "development-tools", "text-processing"]
 keywords = ["typography", "development", "spelling", "pedantic"]
+include = ["README.md", "CHANGELOG.md", "/src/*", "/LICENSE*"]
+repository = "https://github.com/ronnychevalier/typope"
 
 [features]
 default = ["lang-all"]
