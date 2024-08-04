@@ -1,0 +1,85 @@
+name: ci
+on:
+  pull_request:
+    paths:
+    - '**'
+    - '!/*.md'
+    - "!/LICENSE-*"
+  push:
+    branches:
+    - '**'
+    paths:
+    - '**'
+    - '!/*.md'
+    - "!/LICENSE-*"
+jobs:
+  typos:
+    name: Spell Check with Typos
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: typos
+      uses: crate-ci/typos@master
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        rust: ["stable"]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+    - uses: Swatinem/rust-cache@v2
+    - name: Default features
+      run: cargo test --workspace
+  msrv:
+    name: "Check MSRV: 1.80.0"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.80.0
+    - uses: Swatinem/rust-cache@v2
+    - name: Default features
+      run: cargo check --all-targets
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt
+    - uses: Swatinem/rust-cache@v2
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.80.0
+      with:
+        components: clippy
+    - uses: Swatinem/rust-cache@v2
+    - name: Run Clippy
+      run: cargo clippy --all-features --all-targets -- -D warnings
+  cargo-deny:
+    name: "cargo deny"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: EmbarkStudios/cargo-deny-action@v1
+      with:
+        rust-version: "1.80.0"
