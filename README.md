@@ -1,11 +1,52 @@
 # `typope`
 
+[![Latest Version]][crates.io]
 ![MSRV][rustc-image]
+![Apache 2.0 OR MIT licensed][license-image]
 
 Pedantic tool to find [orthotypography][typographical-syntax] mistakes,
 typographical errors, and other mistakes that are not covered by tools
 like [`typos`][typos] to ensure that your source code is
 free from typographical heresy.
+
+## Installation
+
+```bash
+cargo install --locked typope
+```
+
+## Usage
+
+Analyze source code recursively in the current directory:
+
+```bash
+typope
+```
+
+### Command Line Options
+
+`typope` supports a subset of the same command line options as [`typos`][typos], such as `--hidden` or `--no-ignore`.
+
+See `typope --help` for more details.
+
+### Configuration
+
+`typope` can read the configuration files from [`typos`][typos] (e.g., `.typos.toml`) such as:
+
+```toml
+[files]
+extend-exclude = ["directory"]
+ignore-hidden = false
+
+[default]
+extend-ignore-re = ["some regex.*rrrregex"]
+
+[type.cpp]
+check-file = false
+```
+
+See [`typos` reference documentation](https://github.com/crate-ci/typos/blob/master/docs/reference.md) for more details, but know that only a subset of these fields are supported:
+the ones irrelevant for `typope` at the moment (e.g., `check-filename`, `extend-words`, or `extend-identifiers`) are ignored.
 
 ## Rules
 
@@ -54,3 +95,6 @@ additional terms or conditions.
 [tree-sitter]: https://tree-sitter.github.io/tree-sitter/
 [typographical-syntax]: https://en.wikipedia.org/wiki/Typographical_syntax
 [rustc-image]: https://img.shields.io/badge/rustc-1.80+-blue.svg
+[license-image]: https://img.shields.io/crates/l/typope.svg
+[crates.io]: https://crates.io/crates/typope
+[Latest Version]: https://img.shields.io/crates/v/typope.svg
