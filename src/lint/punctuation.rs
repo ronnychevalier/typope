@@ -8,7 +8,7 @@ use miette::{Diagnostic, SourceSpan};
 
 use thiserror::Error;
 
-use winnow::ascii::alphanumeric1;
+use winnow::ascii::{alphanumeric1, digit1};
 use winnow::combinator::{alt, delimited, not, preceded, repeat, repeat_till, terminated};
 use winnow::error::InputError;
 use winnow::token::{none_of, one_of, take};
@@ -122,6 +122,9 @@ impl Rule for Punctuation {
             not("Sized").parse_next(input)?;
             // Can be found in a text that gives an example of the parameters to use in a URL (e.g., `add ?param=2&param2=40 to the URL`)
             not(terminated(alphanumeric1, '=')).parse_next(input)?;
+            // Can be found in SQL queries (e.g., `SELECT a FROM b WHERE c = ?1 AND d = ?2`)
+            // See <https://www.sqlite.org/c3ref/bind_blob.html>
+            not(digit1).parse_next(input)?;
 
             Ok(('?', range))
         }
@@ -332,6 +335,13 @@ mod tests {
     fn looks_like_url_parameter() {
         assert!(Punctuation
             .check(br"Add ?var=1&var2=44 to the URL")
+            .is_empty());
+    }
+
+    #[test]
+    fn sqlite_prepared_statement() {
+        assert!(Punctuation
+            .check(br"SELECT a FROM b WHERE c = ?1 AND d = ?2")
             .is_empty());
     }
 }

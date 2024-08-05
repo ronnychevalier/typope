@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Avoid false positive with sqlite prepared statements (e.g., `SELECT a FROM b WHERE c = ?1 AND d = ?2`)
 - Markdown: avoid false positives with images (e.g., `![image](image.png)`)
 
 [Unreleased]: https://github.com/ronnychevalier/typope/compare/v0.1.0...HEAD
