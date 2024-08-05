@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Markdown: avoid false positives with images (e.g., `![image](image.png)`)
+
 [Unreleased]: https://github.com/ronnychevalier/typope/compare/v0.1.0...HEAD
 
 ## [0.1.0] - 04-08-2024

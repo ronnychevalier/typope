@@ -73,7 +73,8 @@ impl<'t> Iterator for IterMarkdown<'t> {
             if !self.tree_sitter_types.contains(&kind) {
                 continue;
             }
-            let node = node.ignore_children_ranges(|node| node.kind() == "code_span");
+            let node =
+                node.ignore_children_ranges(|node| ["code_span", "image"].contains(&node.kind()));
 
             return Some(node);
         }
@@ -154,6 +155,21 @@ hello
                     value: "hello".into()
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn image() {
+        let markdown = r#"abc ![link](link)"#;
+        let markdown = SharedSource::new("file.md", markdown.as_bytes().to_vec());
+        let mut parsed = Language::markdown().parse(&markdown).unwrap();
+        let strings = parsed.strings(markdown.as_ref()).collect::<Vec<_>>();
+        assert_eq!(
+            strings,
+            [LintableString {
+                offset: 0,
+                value: "abc ".into()
+            },]
         );
     }
 }
