@@ -254,7 +254,11 @@ impl<'t> LintableNode<'t> {
                 Some(range)
             } else {
                 ended = true;
-                Some(current_range_start..self.node.byte_range().end)
+                if (current_range_start..self.node.byte_range().end).is_empty() {
+                    None
+                } else {
+                    Some(current_range_start..self.node.byte_range().end)
+                }
             }
         })
     }
