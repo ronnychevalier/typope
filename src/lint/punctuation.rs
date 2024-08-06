@@ -75,7 +75,7 @@ impl Rule for Punctuation {
             input: &mut Located<&'s [u8]>,
         ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
             let (_space, range) =
-                delimited(none_of([' ']), ' '.with_span(), ':').parse_next(input)?;
+                delimited(none_of([' ', '>']), ' '.with_span(), ':').parse_next(input)?;
 
             // Handles cases when we have an emoji like `:fire:` or `:)`.
             // In such cases, we should not mark them as a typo.
@@ -88,10 +88,12 @@ impl Rule for Punctuation {
             input: &mut Located<&'s [u8]>,
         ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
             let (_space, range) =
-                delimited(none_of([' ']), ' '.with_span(), '!').parse_next(input)?;
+                delimited(none_of([' ', '&', '=', '>', '|']), ' '.with_span(), '!')
+                    .parse_next(input)?;
 
             // Do not mark such a string `x != y` as a typo
             not('=').parse_next(input)?;
+            not('(').parse_next(input)?;
             // Do not mark strings like ` !Send` as a typo: it has a meaning in Rust
             not(alt(("Send", "Sync"))).parse_next(input)?;
             // A string might contain some kind of shell script like `[ ! -e /some/file ]`
@@ -342,6 +344,18 @@ mod tests {
     fn sqlite_prepared_statement() {
         assert!(Punctuation
             .check(br"SELECT a FROM b WHERE c = ?1 AND d = ?2")
+            .is_empty());
+    }
+
+    #[test]
+    fn fn_return() {
+        assert!(Punctuation.check(br"fn() -> !").is_empty());
+    }
+
+    #[test]
+    fn condition() {
+        assert!(Punctuation
+            .check(br"a & !b & !c | !z  or !(y | w)")
             .is_empty());
     }
 }
