@@ -1,5 +1,7 @@
 use std::iter::FlatMap;
 
+use btree_range_map::RangeSet;
+
 use tree_sitter::Tree;
 
 use tree_sitter_md::MarkdownTree;
@@ -43,10 +45,20 @@ type MarkdownTraversal<'t> = FlatMap<
 pub struct IterMarkdown<'t> {
     traversals: MarkdownTraversal<'t>,
     tree_sitter_types: &'static [&'static str],
+    block_quote_ranges: RangeSet<usize>,
 }
 
 impl<'t> IterMarkdown<'t> {
     fn new(parsed: &'t ParsedMarkdown) -> Self {
+        let block_quote_ranges = PreorderTraversal::from(parsed.tree.block_tree())
+            .filter_map(|node| {
+                if node.kind() != "block_quote" {
+                    return None;
+                }
+
+                Some(node.byte_range())
+            })
+            .collect::<RangeSet<_>>();
         let traversals = parsed
             .tree
             .inline_trees()
@@ -55,6 +67,7 @@ impl<'t> IterMarkdown<'t> {
         Self {
             traversals,
             tree_sitter_types: parsed.tree_sitter_types,
+            block_quote_ranges,
         }
     }
 }
@@ -64,7 +77,11 @@ impl<'t> Iterator for IterMarkdown<'t> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let node = self.traversals.next().map(LintableNode::from)?;
+            let node = self.traversals.next()?;
+            if self.block_quote_ranges.intersects(node.byte_range()) {
+                continue;
+            }
+
             let kind = node.kind();
             if node.byte_range().len() <= 3 {
                 continue;
@@ -73,6 +90,8 @@ impl<'t> Iterator for IterMarkdown<'t> {
             if !self.tree_sitter_types.contains(&kind) {
                 continue;
             }
+
+            let node = LintableNode::from(node);
             let node =
                 node.ignore_children_ranges(|node| ["code_span", "image"].contains(&node.kind()));
 
@@ -170,6 +189,34 @@ hello
                 offset: 0,
                 value: "abc ".into()
             },]
+        );
+    }
+
+    #[test]
+    fn block_quote() {
+        let markdown = r#"# Block Quotes
+
+> Should not be lintable
+> > This line as well
+> > And this one
+
+Something else `hmm`
+"#;
+        let markdown = SharedSource::new("file.md", markdown.as_bytes().to_vec());
+        let mut parsed = Language::markdown().parse(&markdown).unwrap();
+        let strings = parsed.strings(markdown.as_ref()).collect::<Vec<_>>();
+        assert_eq!(
+            strings,
+            [
+                LintableString {
+                    offset: 2,
+                    value: "Block Quotes".into()
+                },
+                LintableString {
+                    offset: 81,
+                    value: "Something else ".into()
+                },
+            ]
         );
     }
 }

@@ -29,7 +29,7 @@ lang-c = ["dep:tree-sitter-c"]
 lang-cpp = ["dep:tree-sitter-cpp"]
 lang-go = ["dep:tree-sitter-go"]
 lang-json = ["dep:tree-sitter-json"]
-lang-markdown = ["dep:tree-sitter-md"]
+lang-markdown = ["dep:tree-sitter-md", "dep:btree-range-map"]
 lang-python = ["dep:tree-sitter-python"]
 lang-rust = ["dep:tree-sitter-rust"]
 lang-toml = ["dep:tree-sitter-toml-ng"]
@@ -38,6 +38,7 @@ lang-kotlin = ["dep:tree-sitter-kotlin"]
 
 [dependencies]
 anyhow = "1.0.86"
+btree-range-map = { version = "0.7.2", optional = true }
 clap = { version = "4.5.9", features = ["derive"] }
 ignore = "0.4.22"
 miette = { version = "7.2.0", features = ["fancy"] }

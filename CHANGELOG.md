@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Avoid false positive with sqlite prepared statements (e.g., `SELECT a FROM b WHERE c = ?1 AND d = ?2`)
 - Avoid false positives when something prints a string that looks like a condition or an expression (e.g., `a | !c` or`d = !(z && b)`)
 - Markdown: avoid false positives with images (e.g., `![image](image.png)`)
+- Markdown: ignore block quotes
 
 ### 📚 Documentation
 
