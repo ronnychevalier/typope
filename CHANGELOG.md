@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.1.1] - 2024-08-07
 
 ### 🐛 Bug Fixes
 
@@ -16,9 +16,9 @@ All notable changes to this project will be documented in this file.
 - *(README)* Add install and usage examples
 - *(README)* Mention that the tool is experimental
 
-[Unreleased]: https://github.com/ronnychevalier/typope/compare/v0.1.0...HEAD
+[0.1.1]: https://github.com/ronnychevalier/typope/compare/v0.1.0..v0.1.1
 
-## [0.1.0] - 04-08-2024
+## [0.1.0] - 2024-08-04
 
 This was the initial release of `typope`.
 
