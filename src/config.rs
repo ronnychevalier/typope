@@ -3,7 +3,6 @@
 // but it has been modified to remove fields that we do not care about for the moment.
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
@@ -13,8 +12,15 @@ use ignore::WalkBuilder;
 use crate::lang::Language;
 
 /// List of file names that can contain the configuration
-pub const SUPPORTED_FILE_NAMES: &[&str] =
-    &["typos.toml", "_typos.toml", ".typos.toml", "pyproject.toml"];
+pub const SUPPORTED_FILE_NAMES: &[&str] = &[
+    "typos.toml",
+    "_typos.toml",
+    ".typos.toml",
+    CARGO_TOML,
+    PYPROJECT_TOML,
+];
+const CARGO_TOML: &str = "Cargo.toml";
+const PYPROJECT_TOML: &str = "pyproject.toml";
 
 /// Defines the configuration of the linter.
 ///
@@ -40,6 +46,28 @@ pub struct Config {
     pub default: EngineConfig,
     #[serde(rename = "type")]
     pub type_: TypeEngineConfig,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+#[serde(rename_all = "kebab-case")]
+struct CargoTomlConfig {
+    pub workspace: Option<CargoTomlPackage>,
+    pub package: Option<CargoTomlPackage>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+#[serde(rename_all = "kebab-case")]
+struct CargoTomlPackage {
+    pub metadata: CargoTomlMetadata,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+#[serde(rename_all = "kebab-case")]
+struct CargoTomlMetadata {
+    pub typope: Option<Config>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -75,19 +103,34 @@ impl Config {
         let s = std::fs::read_to_string(path)
             .with_context(|| format!("could not read config at `{}`", path.display()))?;
 
-        if path.file_name() == Some(OsStr::new("pyproject.toml")) {
-            let config = toml::from_str::<PyprojectTomlConfig>(&s)
-                .with_context(|| format!("could not parse config at `{}`", path.display()))?;
+        match path.file_name() {
+            Some(name) if name == CARGO_TOML => {
+                let config = toml::from_str::<CargoTomlConfig>(&s)
+                    .with_context(|| format!("could not parse config at `{}`", path.display()))?;
+                let typos = config
+                    .workspace
+                    .and_then(|w| w.metadata.typope)
+                    .or(config.package.and_then(|p| p.metadata.typope));
 
-            if config.tool.typos.is_none() {
-                Ok(None)
-            } else {
-                Ok(config.tool.typos)
+                if let Some(typos) = typos {
+                    Ok(Some(typos))
+                } else {
+                    Ok(None)
+                }
             }
-        } else {
-            Self::from_toml(&s)
+            Some(name) if name == PYPROJECT_TOML => {
+                let config = toml::from_str::<PyprojectTomlConfig>(&s)
+                    .with_context(|| format!("could not parse config at `{}`", path.display()))?;
+
+                if let Some(typos) = config.tool.typos {
+                    Ok(Some(typos))
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Self::from_toml(&s)
                 .map(Some)
-                .with_context(|| format!("could not parse config at `{}`", path.display()))
+                .with_context(|| format!("could not parse config at `{}`", path.display())),
         }
     }
 
@@ -381,13 +424,39 @@ extend-ignore-re = ["some regex.*rrrregex"]
 [type.cpp]
 check-file = false
         "#;
-        let dir = tempdir().unwrap();
+        let dir: tempfile::TempDir = tempdir().unwrap();
         assert!(Config::from_dir(dir.path()).unwrap().is_none());
 
         let typos_config_file = dir.path().join(".typos.toml");
         std::fs::write(&typos_config_file, config).unwrap();
         let config = Config::from_dir(dir.path()).unwrap().unwrap();
-        assert!(!config.files.ignore_hidden())
+        assert!(!config.files.ignore_hidden());
+    }
+
+    #[test]
+    fn from_cargo_toml() {
+        let config = r#"
+[package]
+name = "abc"
+edition = "2021"
+publish = false
+
+[package.metadata.typope.files]
+ignore-hidden = false
+
+[package.metadata.typope.default]
+extend-ignore-re = ["some regex.*rrrregex"]
+
+[package.metadata.typope.type.cpp]
+check-file = false
+        "#;
+
+        let dir: tempfile::TempDir = tempdir().unwrap();
+
+        let cargo_toml = dir.path().join("Cargo.toml");
+        std::fs::write(&cargo_toml, config).unwrap();
+        let config = Config::from_file(&cargo_toml).unwrap().unwrap();
+        assert!(!config.files.ignore_hidden());
     }
 
     #[test]
