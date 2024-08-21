@@ -39,13 +39,13 @@ jobs:
     - name: Default features
       run: cargo test --workspace
   msrv:
-    name: "Check MSRV: 1.80.0"
+    name: "Check MSRV: 1.74.0"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@1.80.0
+      uses: dtolnay/rust-toolchain@1.74.0
     - uses: Swatinem/rust-cache@v2
     - name: Default features
       run: cargo check --all-targets

@@ -6,6 +6,7 @@ use miette::{MietteError, NamedSource, SourceCode, SpanContents};
 pub mod config;
 pub mod lang;
 pub mod lint;
+mod lock;
 mod tree;
 
 #[derive(Debug, Clone)]

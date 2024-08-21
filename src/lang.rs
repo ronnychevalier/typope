@@ -1,9 +1,11 @@
+//! Parsers to find strings in various source code files
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
 
+use crate::lock::LazyLock;
 use crate::tree::PreorderTraversal;
 use crate::SharedSource;
 
