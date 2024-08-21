@@ -110,7 +110,7 @@ impl Config {
                 let typos = config
                     .workspace
                     .and_then(|w| w.metadata.typope)
-                    .or(config.package.and_then(|p| p.metadata.typope));
+                    .or_else(|| config.package.and_then(|p| p.metadata.typope));
 
                 if let Some(typos) = typos {
                     Ok(Some(typos))
@@ -139,14 +139,7 @@ impl Config {
         toml::from_str(data).map_err(Into::into)
     }
 
-    pub fn from_defaults() -> Self {
-        Self {
-            files: Walk::from_defaults(),
-            default: EngineConfig::from_defaults(),
-            type_: TypeEngineConfig::from_defaults(),
-        }
-    }
-
+    /// Updates the config based on the value of another config
     pub fn update(&mut self, source: &Self) {
         self.files.update(&source.files);
         self.default.update(&source.default);
@@ -193,7 +186,7 @@ impl Config {
 /// [files]
 /// ignore-hidden = false
 /// ```
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct Walk {
@@ -219,20 +212,22 @@ pub struct Walk {
     pub ignore_parent: Option<bool>,
 }
 
-impl Walk {
-    pub fn from_defaults() -> Self {
-        let empty = Self::default();
+impl Default for Walk {
+    fn default() -> Self {
         Self {
-            extend_exclude: empty.extend_exclude.clone(),
-            ignore_hidden: Some(empty.ignore_hidden()),
+            extend_exclude: Default::default(),
+            ignore_hidden: Some(true),
             ignore_files: Some(true),
-            ignore_dot: Some(empty.ignore_dot()),
-            ignore_vcs: Some(empty.ignore_vcs()),
-            ignore_global: Some(empty.ignore_global()),
-            ignore_parent: Some(empty.ignore_parent()),
+            ignore_dot: Some(true),
+            ignore_vcs: Some(true),
+            ignore_global: Some(true),
+            ignore_parent: Some(true),
         }
     }
+}
 
+impl Walk {
+    /// Updates the config based on the value of another config
     pub fn update(&mut self, source: &Self) {
         self.extend_exclude
             .extend(source.extend_exclude.iter().cloned());
@@ -304,14 +299,12 @@ impl Walk {
 #[serde(default)]
 #[serde(transparent)]
 pub struct TypeEngineConfig {
+    /// Maps a file type to a custom config
     pub patterns: HashMap<String, EngineConfig>,
 }
 
 impl TypeEngineConfig {
-    pub fn from_defaults() -> Self {
-        Self::default()
-    }
-
+    /// Updates the config based on the value of another config
     pub fn update(&mut self, source: &Self) {
         for (type_name, engine) in &source.patterns {
             self.patterns
@@ -322,14 +315,15 @@ impl TypeEngineConfig {
     }
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+/// Configuration for the linter's engine that can be applied globally or on a type of file
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 #[serde(rename_all = "kebab-case")]
 pub struct EngineConfig {
-    /// Verifying spelling in files.
+    /// Whether to check files
     pub check_file: Option<bool>,
 
-    /// Additional list of regexes to prevent string from being checked
+    /// Additional list of regexes to prevent strings from being checked
     #[serde(with = "serde_regex")]
     pub extend_ignore_re: Vec<regex::Regex>,
 }
@@ -347,15 +341,17 @@ impl PartialEq for EngineConfig {
 
 impl Eq for EngineConfig {}
 
-impl EngineConfig {
-    pub fn from_defaults() -> Self {
-        let empty = Self::default();
+impl Default for EngineConfig {
+    fn default() -> Self {
         Self {
-            check_file: Some(empty.check_file()),
-            ..Default::default()
+            check_file: Some(true),
+            extend_ignore_re: Default::default(),
         }
     }
+}
 
+impl EngineConfig {
+    /// Updates the config based on the value of another config
     pub fn update(&mut self, source: &Self) {
         if let Some(source) = source.check_file {
             self.check_file = Some(source);
@@ -461,22 +457,10 @@ check-file = false
 
     #[test]
     fn test_update_from_nothing() {
-        let null = Config::default();
-        let defaulted = Config::from_defaults();
+        let defaulted = Config::default();
 
         let mut actual = defaulted.clone();
-        actual.update(&null);
-
-        assert_eq!(actual, defaulted);
-    }
-
-    #[test]
-    fn test_update_from_defaults() {
-        let null = Config::default();
-        let defaulted = Config::from_defaults();
-
-        let mut actual = null;
-        actual.update(&defaulted);
+        actual.update(&Config::default());
 
         assert_eq!(actual, defaulted);
     }

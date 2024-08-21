@@ -173,7 +173,7 @@ impl Args {
         };
 
         let cwd = std::env::current_dir().context("no current working directory")?;
-        let mut config = Config::from_defaults();
+        let mut config = Config::default();
         for ancestor in cwd.ancestors() {
             if let Some(derived) = Config::from_dir(ancestor)? {
                 config.update(&derived);
