@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2024-08-21
+
+### 🚀 Features
+
+- Support loading a config from `Cargo.toml` like [`typos`][typos]
+
+### 🚜 Refactor
+
+- Reduce the MSRV to 1.74.0
+
+[0.2.0]: https://github.com/ronnychevalier/typope/compare/v0.1.1..v0.2.0
+
 ## [0.1.1] - 2024-08-07
 
 ### 🐛 Bug Fixes
@@ -23,3 +35,5 @@ All notable changes to this project will be documented in this file.
 This was the initial release of `typope`.
 
 [0.1.0]: https://github.com/ronnychevalier/typope/releases/tag/v0.1.0
+
+[typos]: https://github.com/crate-ci/typos

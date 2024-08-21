@@ -96,7 +96,7 @@ additional terms or conditions.
 [typos]: https://github.com/crate-ci/typos
 [tree-sitter]: https://tree-sitter.github.io/tree-sitter/
 [typographical-syntax]: https://en.wikipedia.org/wiki/Typographical_syntax
-[rustc-image]: https://img.shields.io/badge/rustc-1.80+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.74+-blue.svg
 [license-image]: https://img.shields.io/crates/l/typope.svg
 [crates.io]: https://crates.io/crates/typope
 [Latest Version]: https://img.shields.io/crates/v/typope.svg
