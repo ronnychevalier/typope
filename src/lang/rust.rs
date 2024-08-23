@@ -7,7 +7,10 @@ impl Language {
             name: "rust",
             language: tree_sitter_rust::language(),
             extensions: &["rs"],
-            parser: Mode::Query("(string_literal (string_content) @strings)+".into()),
+            parser: Mode::Query {
+                query: "(string_literal (string_content) @strings)+".into(),
+                ignore_captures: None,
+            },
         }
     }
 }

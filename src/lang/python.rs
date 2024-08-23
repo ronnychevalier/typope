@@ -7,8 +7,24 @@ impl Language {
             name: "python",
             language: tree_sitter_python::language(),
             extensions: &["py"],
-            parser: Mode::Generic {
-                tree_sitter_types: &["string_content"],
+            parser: Mode::Query {
+                query: "; Module docstring
+((module . (expression_statement (string (string_content) @docstrings))))
+
+; Class docstring
+((class_definition
+  body: (block . (expression_statement  (string (string_content) @docstrings)))))
+
+; Function/method docstring
+((function_definition
+  body: (block . (expression_statement (string (string_content) @docstrings)))))
+
+; Attribute docstring
+(((expression_statement (assignment)) . (expression_statement  (string (string_content) @docstrings))))
+
+(string_content)+ @strings"
+                    .into(),
+                ignore_captures: Some(&["docstrings"]),
             },
         }
     }
@@ -41,12 +57,19 @@ mod tests {
     #[test]
     fn lintable_strings() {
         let python = r#"
+"""
+Module docstring foobar
+"""
 s = "abcd"
 d = 1234 # Hehe "foobar"
 s = "abcd" "efgh"
 
 # Comments
 def f():
+    """
+    Function docstring
+    """
+
     return 'ijkl'
 "#;
         let python = SharedSource::new("file.py", python.as_bytes().to_vec());
@@ -56,19 +79,19 @@ def f():
             strings,
             [
                 LintableString {
-                    offset: 6,
+                    offset: 38,
                     value: "abcd".into()
                 },
                 LintableString {
-                    offset: 42,
+                    offset: 74,
                     value: "abcd".into()
                 },
                 LintableString {
-                    offset: 49,
+                    offset: 81,
                     value: "efgh".into()
                 },
                 LintableString {
-                    offset: 88,
+                    offset: 160,
                     value: "ijkl".into()
                 }
             ]

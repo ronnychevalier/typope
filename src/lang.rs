@@ -1,5 +1,5 @@
 //! Parsers to find strings in various source code files
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::sync::Arc;
 
@@ -90,7 +90,10 @@ enum Mode {
     Custom(CustomParser),
 
     /// Parse the language using a query
-    Query(String),
+    Query {
+        query: String,
+        ignore_captures: Option<&'static [&'static str]>,
+    },
 }
 
 /// Parser for a language to find strings based on its grammar
@@ -132,6 +135,16 @@ impl Language {
     }
 
     /// Returns the name of the language
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::ffi::OsStr;
+    /// #
+    /// # use typope::lang::Language;
+    /// let rust = Language::from_extension(OsStr::new("rs")).unwrap();
+    /// assert_eq!(rust.name(), "rust");
+    /// ```
     pub fn name(&self) -> &'static str {
         self.name
     }
@@ -157,7 +170,10 @@ impl Language {
                 }))
             }
             Mode::Custom(parser) => Ok(parser(source.as_ref())?),
-            Mode::Query(query) => {
+            Mode::Query {
+                query,
+                ignore_captures,
+            } => {
                 let mut parser = Parser::new();
                 parser.set_language(&self.language)?;
                 let Some(tree) = parser.parse(source.as_ref(), None) else {
@@ -168,8 +184,10 @@ impl Language {
                 Ok(Box::new(ParsedQuery {
                     tree,
                     query,
+                    ignore_captures: *ignore_captures,
                     source: source.clone(),
                     cursor: QueryCursor::new(),
+                    ignored_nodes: HashSet::new(),
                 }))
             }
         }
@@ -181,6 +199,8 @@ struct ParsedQuery {
     query: Query,
     cursor: QueryCursor,
     source: SharedSource,
+    ignore_captures: Option<&'static [&'static str]>,
+    ignored_nodes: HashSet<usize>,
 }
 
 impl Parsed for ParsedQuery {
@@ -192,6 +212,17 @@ impl Parsed for ParsedQuery {
             .filter_map(|capture| {
                 if capture.node.byte_range().len() <= 3 {
                     return None;
+                }
+
+                if let Some(ignore_captures) = self.ignore_captures {
+                    if self.ignored_nodes.contains(&capture.node.id()) {
+                        return None;
+                    }
+                    let name = self.query.capture_names().get(capture.index as usize)?;
+                    if ignore_captures.contains(name) {
+                        self.ignored_nodes.insert(capture.node.id());
+                        return None;
+                    }
                 }
 
                 Some(LintableNode::from(capture.node))
