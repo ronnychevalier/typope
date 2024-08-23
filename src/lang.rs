@@ -234,8 +234,8 @@ impl Parsed for ParsedQuery {
 /// A string that can be checked with its offset within its source
 #[derive(PartialEq, Eq, Debug)]
 pub struct LintableString {
-    pub(crate) offset: usize,
-    pub(crate) value: String,
+    offset: usize,
+    value: String,
 }
 
 impl LintableString {

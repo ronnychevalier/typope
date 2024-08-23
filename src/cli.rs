@@ -41,6 +41,10 @@ pub(crate) struct Args {
     #[arg(long, group = "mode", help_heading = "Mode")]
     files: bool,
 
+    /// Write fixes out
+    #[arg(long, short, group = "mode", help_heading = "Mode")]
+    write_changes: bool,
+
     /// Write the current configuration to file with `-` for stdout
     #[arg(long, value_name = "OUTPUT", group = "mode", help_heading = "Mode")]
     dump_config: Option<PathBuf>,
@@ -104,6 +108,10 @@ impl Args {
             linter
                 .iter()
                 .map(|typo| {
+                    if self.write_changes {
+                        let _ = typo.fix().apply(file.path());
+                    }
+
                     let typo: miette::Report = typo.into();
                     let _ = writeln!(stderr, "{typo:?}");
                 })

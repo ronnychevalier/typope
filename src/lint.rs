@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::path::Path;
 
 use miette::{SourceCode, SourceSpan};
@@ -15,6 +16,39 @@ pub trait Rule {
     fn check(&self, bytes: &[u8]) -> Vec<Box<dyn Typo>>;
 }
 
+/// The kind of action to perform to fix the lint suggestion
+pub enum Fix {
+    /// Unclear how to fix the typo, nothing is done
+    Unknown,
+
+    /// Removes some characters
+    Remove { span: SourceSpan },
+}
+
+impl Fix {
+    /// Applies the action on the given file and location
+    pub fn apply(&self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+        match self {
+            Self::Unknown => Ok(()),
+            Self::Remove { span } => {
+                let path = path.as_ref();
+                let mut content = std::fs::read(path)?;
+                content.drain(span.offset()..(span.offset() + span.len()));
+
+                let mut file = if let Some(parent) = path.parent() {
+                    tempfile::NamedTempFile::new_in(parent)?
+                } else {
+                    tempfile::NamedTempFile::new()?
+                };
+                file.write_all(&content)?;
+                file.persist(path)?;
+
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Type that represents a typo found
 pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
     /// Span that identify where the typo is located
@@ -22,6 +56,11 @@ pub trait Typo: miette::Diagnostic + std::error::Error + Sync + Send {
 
     /// Specify within which source the typo has been found
     fn with_source(&mut self, src: SharedSource, offset: usize);
+
+    /// Returns the action to perform to fix the typo
+    fn fix(&self) -> Fix {
+        Fix::Unknown
+    }
 }
 
 /// Detects typos in a file
@@ -192,9 +231,11 @@ impl miette::Diagnostic for Box<dyn Typo> {
 
 #[cfg(test)]
 mod tests {
+    use std::{fs::File, io::Write};
+
     use crate::lint::Language;
 
-    use super::Linter;
+    use super::{Fix, Linter};
 
     #[test]
     fn from_path_unknown_extension() {
@@ -353,5 +394,19 @@ Hello mate `this should not trigger the rule : foobar` abc
 
         let typos = linter.iter().count();
         assert_eq!(typos, 0);
+    }
+
+    #[test]
+    fn write_changes() {
+        let fix = Fix::Remove {
+            span: (1, 2).into(),
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("file.txt");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"123456").unwrap();
+        drop(file);
+        fix.apply(&file_path).unwrap();
+        assert_eq!(b"1456", std::fs::read(file_path).unwrap().as_slice());
     }
 }

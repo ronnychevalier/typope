@@ -14,7 +14,7 @@ use winnow::error::InputError;
 use winnow::token::{none_of, one_of, take};
 use winnow::{Located, PResult, Parser};
 
-use super::SharedSource;
+use super::{Fix, SharedSource};
 use super::{Rule, Typo};
 
 /// A space *before* a punctuation mark has been detected.
@@ -60,6 +60,10 @@ impl Typo for TypoSpaceBeforePunctuationMarks {
     fn with_source(&mut self, src: SharedSource, offset: usize) {
         self.src = Some(src);
         self.span = (self.span.offset() + offset, self.span.len()).into();
+    }
+
+    fn fix(&self) -> Fix {
+        Fix::Remove { span: self.span }
     }
 }
 
