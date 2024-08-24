@@ -130,6 +130,11 @@ impl Linter {
     pub fn iter(&mut self) -> Iter<'_> {
         Iter::new(self)
     }
+
+    /// Returns an iterator over the strings that can be linted in the source
+    pub fn strings(&mut self) -> impl Iterator<Item = String> + '_ {
+        self.parsed.strings(self.source.as_ref()).map(Into::into)
+    }
 }
 
 /// Iterator over the typos found in a file
@@ -408,5 +413,21 @@ Hello mate `this should not trigger the rule : foobar` abc
         drop(file);
         fix.apply(&file_path).unwrap();
         assert_eq!(b"1456", std::fs::read(file_path).unwrap().as_slice());
+    }
+
+    #[cfg(feature = "lang-rust")]
+    #[test]
+    fn strings() {
+        let rust = r#"
+        /// Docstring
+        fn regex() -> &str {
+            let _unused = String::from("abcd");
+            "something"
+        }
+        "#;
+        let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
+
+        let strings = linter.strings().collect::<Vec<_>>();
+        assert_eq!(strings, &["abcd", "something"]);
     }
 }

@@ -41,6 +41,10 @@ pub(crate) struct Args {
     #[arg(long, group = "mode", help_heading = "Mode")]
     files: bool,
 
+    /// Debug: Print each string that would be spellchecked.
+    #[arg(long, group = "mode", help_heading = "Mode")]
+    strings: bool,
+
     /// Write fixes out
     #[arg(long, short, group = "mode", help_heading = "Mode")]
     write_changes: bool,
@@ -98,6 +102,13 @@ impl Args {
             let Ok(Some(mut linter)) = Linter::from_path(file.path()) else {
                 return 0;
             };
+            if self.strings {
+                let mut stdout = std::io::stdout().lock();
+                for string in linter.strings() {
+                    let _ = writeln!(stdout, "{string}");
+                }
+                return 0;
+            }
             if self.files {
                 println!("{}", file.path().display());
                 return 0;

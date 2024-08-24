@@ -250,6 +250,12 @@ impl LintableString {
     }
 }
 
+impl From<LintableString> for String {
+    fn from(lintable: LintableString) -> Self {
+        lintable.value
+    }
+}
+
 /// Wrapper around a [`Node`] to make it easier to ignore ranges of bytes based on some children
 pub struct LintableNode<'t> {
     node: Node<'t>,
