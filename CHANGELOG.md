@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2024-08-24
+
+### 🚀 Features
+
+- Add `--write-changes` to apply automatically the lint suggestion
+- Add `--strings` to print strings that would be linted
+
+### 🐛 Bug Fixes
+
+- *(python)* Ignore docstrings
+
+[0.3.0]: https://github.com/ronnychevalier/typope/compare/v0.2.0..v0.3.0
+
 ## [0.2.0] - 2024-08-21
 
 ### 🚀 Features

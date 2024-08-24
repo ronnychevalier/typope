@@ -2,7 +2,7 @@
 name = "typope"
 edition = "2021"
 description = "Pedantic source code checker for orthotypography mistakes and other typographical errors"
-version = "0.2.0"
+version = "0.3.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 rust-version = "1.74.0"
