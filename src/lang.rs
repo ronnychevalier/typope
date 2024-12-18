@@ -13,6 +13,7 @@ use crate::SharedSource;
 
 #[cfg(feature = "lang-c")]
 mod c;
+mod cargo_toml;
 #[cfg(feature = "lang-cpp")]
 mod cpp;
 #[cfg(feature = "lang-go")]
@@ -45,19 +46,21 @@ impl Mapping {
         let mut glob_to_lang = Vec::new();
 
         macro_rules! lang {
+            ($lang:ident) => {
+                let lang = Arc::new(Language::$lang());
+                for glob in lang.detections() {
+                    let Ok(glob) = GlobBuilder::new(glob).literal_separator(true).build() else {
+                        continue;
+                    };
+                    glob_set.add(glob);
+                    glob_to_lang.push(Arc::clone(&lang));
+                }
+                languages.push(lang);
+            };
             ($lang:ident, $feature: literal) => {
                 #[cfg(feature = $feature)]
                 {
-                    let lang = Arc::new(Language::$lang());
-                    for glob in lang.detections() {
-                        let Ok(glob) = GlobBuilder::new(glob).literal_separator(true).build()
-                        else {
-                            continue;
-                        };
-                        glob_set.add(glob);
-                        glob_to_lang.push(Arc::clone(&lang));
-                    }
-                    languages.push(lang);
+                    lang!($lang);
                 }
             };
         }
@@ -72,6 +75,8 @@ impl Mapping {
         lang!(yaml, "lang-yaml");
         lang!(json, "lang-json");
         lang!(markdown, "lang-markdown");
+        // Takes precedence over the generic toml parser, so it needs to be last in the insertion order
+        lang!(cargo_toml);
 
         let glob_set = glob_set.build().unwrap_or_default();
 
@@ -273,6 +278,15 @@ impl LintableString {
 impl From<LintableString> for String {
     fn from(lintable: LintableString) -> Self {
         lintable.value
+    }
+}
+
+impl From<&::toml::Spanned<String>> for LintableString {
+    fn from(spanned: &::toml::Spanned<String>) -> Self {
+        Self {
+            offset: spanned.span().start + 1,
+            value: spanned.get_ref().clone(),
+        }
     }
 }
 
