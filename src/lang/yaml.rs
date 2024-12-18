@@ -5,7 +5,7 @@ impl Language {
     pub fn yaml() -> Self {
         Self {
             name: "yaml",
-            extensions: &["yml", "yaml"],
+            detections: &["*.yml", "*.yaml"],
             parser: Mode::Generic {
                 language: tree_sitter_yaml::language(),
                 tree_sitter_types: &["double_quote_scalar"],
@@ -29,11 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::yaml().extensions() {
+    fn find_from_filenames() {
+        for filename in ["file.yml", "file.yaml"] {
             assert_eq!(
                 "yaml",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
+                Language::from_filename(OsStr::new(filename))
+                    .unwrap()
+                    .name()
             );
         }
     }

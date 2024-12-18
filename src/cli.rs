@@ -83,7 +83,7 @@ impl Args {
         }
         if self.type_list {
             for lang in Language::iter() {
-                println!("{}: {}", lang.name(), lang.extensions().join(", "));
+                println!("{}: {}", lang.name(), lang.detections().join(", "));
             }
             return Ok(());
         }

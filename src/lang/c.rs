@@ -5,7 +5,7 @@ impl Language {
     pub fn c() -> Self {
         Self {
             name: "c",
-            extensions: &["c", "h"],
+            detections: &["*.[chH]", "*.[chH].in"],
             parser: Mode::Generic {
                 language: tree_sitter_c::language(),
                 tree_sitter_types: &["string_content"],
@@ -29,11 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::c().extensions() {
+    fn find_from_filenames() {
+        for filename in ["file.c", "file.h", "file.c.in"] {
             assert_eq!(
                 "c",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
+                Language::from_filename(OsStr::new(filename))
+                    .unwrap()
+                    .name()
             );
         }
     }

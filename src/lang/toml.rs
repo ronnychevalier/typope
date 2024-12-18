@@ -5,7 +5,7 @@ impl Language {
     pub fn toml() -> Self {
         Self {
             name: "toml",
-            extensions: &["toml"],
+            detections: &["*.toml"],
             parser: Mode::Generic {
                 language: tree_sitter_toml_ng::language(),
                 tree_sitter_types: &["string"],
@@ -29,13 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::toml().extensions() {
-            assert_eq!(
-                "toml",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
-            );
-        }
+    fn find_from_filename() {
+        assert_eq!(
+            "toml",
+            Language::from_filename(OsStr::new("file.toml"))
+                .unwrap()
+                .name()
+        );
     }
 
     #[test]

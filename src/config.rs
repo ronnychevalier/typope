@@ -165,7 +165,7 @@ impl Config {
         let Some(extension) = path.extension() else {
             return Cow::Borrowed(&self.default);
         };
-        let Some(lang) = Language::from_extension(extension) else {
+        let Some(lang) = Language::from_filename(extension) else {
             return Cow::Borrowed(&self.default);
         };
 

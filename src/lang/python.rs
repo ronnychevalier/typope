@@ -5,7 +5,7 @@ impl Language {
     pub fn python() -> Self {
         Self {
             name: "python",
-            extensions: &["py"],
+            detections: &["*.py"],
             parser: Mode::Query {
                 language: tree_sitter_python::language(),
                 query: "; Module docstring
@@ -45,13 +45,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::python().extensions() {
-            assert_eq!(
-                "python",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
-            );
-        }
+    fn find_from_filename() {
+        assert_eq!(
+            "python",
+            Language::from_filename(OsStr::new("file.py"))
+                .unwrap()
+                .name()
+        );
     }
 
     #[test]

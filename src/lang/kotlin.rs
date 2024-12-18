@@ -5,7 +5,7 @@ impl Language {
     pub fn kotlin() -> Self {
         Self {
             name: "kotlin",
-            extensions: &["kt"],
+            detections: &["*.kt", "*.kts"],
             parser: Mode::Generic {
                 language: tree_sitter_kotlin::language(),
                 tree_sitter_types: &["string_content"],
@@ -29,11 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::kotlin().extensions() {
+    fn find_from_filenames() {
+        for filename in ["file.kt", "file.kts"] {
             assert_eq!(
                 "kotlin",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
+                Language::from_filename(OsStr::new(filename))
+                    .unwrap()
+                    .name()
             );
         }
     }

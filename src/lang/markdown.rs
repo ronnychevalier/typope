@@ -105,7 +105,7 @@ impl Language {
     pub fn markdown() -> Self {
         Self {
             name: "markdown",
-            extensions: &["md"],
+            detections: &["*.md"],
             parser: Mode::Custom(Box::new(move |text| {
                 Ok(Box::new(ParsedMarkdown::new(text)?))
             })),
@@ -128,13 +128,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::markdown().extensions() {
-            assert_eq!(
-                "markdown",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
-            );
-        }
+    fn find_from_filename() {
+        assert_eq!(
+            "markdown",
+            Language::from_filename(OsStr::new("README.md"))
+                .unwrap()
+                .name()
+        );
     }
 
     #[test]

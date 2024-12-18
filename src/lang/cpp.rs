@@ -5,7 +5,7 @@ impl Language {
     pub fn cpp() -> Self {
         Self {
             name: "cpp",
-            extensions: &["cpp", "cc", "cxx", "hpp", "hh", "hxx"],
+            detections: &["*.[ch]pp", "*.cc", "*.hh", "*.[ch]xx"],
             parser: Mode::Generic {
                 language: tree_sitter_cpp::language(),
                 tree_sitter_types: &["string_content"],
@@ -29,11 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::cpp().extensions() {
+    fn find_from_filenames() {
+        for filename in ["file.cc", "file.cpp", "file.hxx"] {
             assert_eq!(
                 "cpp",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
+                Language::from_filename(OsStr::new(filename))
+                    .unwrap()
+                    .name()
             );
         }
     }

@@ -5,7 +5,7 @@ impl Language {
     pub fn json() -> Self {
         Self {
             name: "json",
-            extensions: &["json"],
+            detections: &["*.json"],
             parser: Mode::Generic {
                 language: tree_sitter_json::language(),
                 tree_sitter_types: &["string_content"],
@@ -29,13 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::json().extensions() {
-            assert_eq!(
-                "json",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
-            );
-        }
+    fn find_from_filename() {
+        assert_eq!(
+            "json",
+            Language::from_filename(OsStr::new("file.json"))
+                .unwrap()
+                .name()
+        );
     }
 
     #[test]

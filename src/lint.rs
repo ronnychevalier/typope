@@ -75,8 +75,8 @@ impl Linter {
     /// Builds a linter that checks for typos in the file at the given path
     pub fn from_path(source: impl AsRef<Path>) -> anyhow::Result<Option<Self>> {
         let path = source.as_ref();
-        let extension = path.extension().unwrap_or_default();
-        let Some(language) = Language::from_extension(extension) else {
+        let filename = path.file_name().unwrap_or_default();
+        let Some(language) = Language::from_filename(filename) else {
             // TODO: parse the file as a text file without tree-sitter
             return Ok(None);
         };

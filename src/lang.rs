@@ -1,7 +1,9 @@
 //! Parsers to find strings in various source code files
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::sync::Arc;
+
+use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
 use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
 
@@ -31,22 +33,29 @@ mod toml;
 mod yaml;
 
 struct Mapping {
-    lang_from_extensions: HashMap<&'static OsStr, Arc<Language>>,
+    glob_set: GlobSet,
+    glob_to_lang: Vec<Arc<Language>>,
     languages: Vec<Arc<Language>>,
 }
 
 impl Mapping {
     pub fn build() -> Self {
-        let mut lang_from_extensions = HashMap::new();
         let mut languages = Vec::new();
+        let mut glob_set = GlobSetBuilder::new();
+        let mut glob_to_lang = Vec::new();
 
         macro_rules! lang {
             ($lang:ident, $feature: literal) => {
                 #[cfg(feature = $feature)]
                 {
                     let lang = Arc::new(Language::$lang());
-                    for extension in lang.extensions() {
-                        lang_from_extensions.insert(OsStr::new(extension), Arc::clone(&lang));
+                    for glob in lang.detections() {
+                        let Ok(glob) = GlobBuilder::new(glob).literal_separator(true).build()
+                        else {
+                            continue;
+                        };
+                        glob_set.add(glob);
+                        glob_to_lang.push(Arc::clone(&lang));
                     }
                     languages.push(lang);
                 }
@@ -64,14 +73,20 @@ impl Mapping {
         lang!(json, "lang-json");
         lang!(markdown, "lang-markdown");
 
+        let glob_set = glob_set.build().unwrap_or_default();
+
         Self {
-            lang_from_extensions,
+            glob_set,
+            glob_to_lang,
             languages,
         }
     }
 
-    pub fn find_from_extension(&self, extension: &OsStr) -> Option<&Language> {
-        self.lang_from_extensions.get(extension).map(AsRef::as_ref)
+    pub fn find_from_filename(&self, filename: &OsStr) -> Option<&Language> {
+        let matches = self.glob_set.matches(filename);
+        let i = matches.last()?;
+
+        self.glob_to_lang.get(*i).map(AsRef::as_ref)
     }
 }
 
@@ -101,12 +116,12 @@ enum Mode {
 /// Parser for a language to find strings based on its grammar
 pub struct Language {
     name: &'static str,
-    extensions: &'static [&'static str],
+    detections: &'static [&'static str],
     parser: Mode,
 }
 
 impl Language {
-    /// Finds the language to parse based on a file extension
+    /// Finds the language to parse based on a file name
     ///
     /// # Example
     ///
@@ -114,13 +129,13 @@ impl Language {
     /// # use std::ffi::OsStr;
     /// #
     /// # use typope::lang::Language;
-    /// assert!(Language::from_extension(OsStr::new("rs")).is_some());
+    /// assert!(Language::from_filename(OsStr::new("file.rs")).is_some());
     /// ```
-    pub fn from_extension(extension: &OsStr) -> Option<&Self> {
-        MAPPING.find_from_extension(extension)
+    pub fn from_filename(filename: &OsStr) -> Option<&Self> {
+        MAPPING.find_from_filename(filename)
     }
 
-    /// Returns an array of extensions supported by this language
+    /// Returns an array of glob patterns of files supported by this language
     ///
     /// # Example
     ///
@@ -128,11 +143,11 @@ impl Language {
     /// # use std::ffi::OsStr;
     /// #
     /// # use typope::lang::Language;
-    /// let rust = Language::from_extension(OsStr::new("rs")).unwrap();
-    /// assert_eq!(rust.extensions(), &["rs"]);
+    /// let rust = Language::from_filename(OsStr::new("file.rs")).unwrap();
+    /// assert_eq!(rust.detections(), &["*.rs"]);
     /// ```
-    pub fn extensions(&self) -> &'static [&'static str] {
-        self.extensions
+    pub fn detections(&self) -> &'static [&'static str] {
+        self.detections
     }
 
     /// Returns the name of the language
@@ -143,7 +158,7 @@ impl Language {
     /// # use std::ffi::OsStr;
     /// #
     /// # use typope::lang::Language;
-    /// let rust = Language::from_extension(OsStr::new("rs")).unwrap();
+    /// let rust = Language::from_filename(OsStr::new("file.rs")).unwrap();
     /// assert_eq!(rust.name(), "rust");
     /// ```
     pub fn name(&self) -> &'static str {
@@ -389,7 +404,9 @@ mod tests {
     use super::Language;
 
     #[test]
-    fn from_extension_invalid() {
-        assert!(Language::from_extension(OsStr::new("extension that does not exist")).is_none());
+    fn unknown_file_type() {
+        assert!(
+            Language::from_filename(OsStr::new("file.withextensionthatdoesnotexist")).is_none()
+        );
     }
 }

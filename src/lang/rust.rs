@@ -5,7 +5,7 @@ impl Language {
     pub fn rust() -> Self {
         Self {
             name: "rust",
-            extensions: &["rs"],
+            detections: &["*.rs"],
             parser: Mode::Query {
                 language: tree_sitter_rust::language(),
                 query: "(string_literal (string_content) @strings)+".into(),
@@ -30,13 +30,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::rust().extensions() {
-            assert_eq!(
-                "rust",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
-            );
-        }
+    fn find_from_filename() {
+        assert_eq!(
+            "rust",
+            Language::from_filename(OsStr::new("file.rs"))
+                .unwrap()
+                .name()
+        );
     }
 
     #[test]

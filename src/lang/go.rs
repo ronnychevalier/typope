@@ -5,7 +5,7 @@ impl Language {
     pub fn go() -> Self {
         Self {
             name: "go",
-            extensions: &["go"],
+            detections: &["*.go"],
             parser: Mode::Generic {
                 language: tree_sitter_go::language(),
                 tree_sitter_types: &["interpreted_string_literal"],
@@ -29,13 +29,13 @@ mod tests {
     }
 
     #[test]
-    fn find_from_extensions() {
-        for ext in Language::go().extensions() {
-            assert_eq!(
-                "go",
-                Language::from_extension(OsStr::new(ext)).unwrap().name()
-            );
-        }
+    fn find_from_filename() {
+        assert_eq!(
+            "go",
+            Language::from_filename(OsStr::new("file.go"))
+                .unwrap()
+                .name()
+        );
     }
 
     #[test]
