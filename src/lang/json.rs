@@ -5,9 +5,9 @@ impl Language {
     pub fn json() -> Self {
         Self {
             name: "json",
-            language: tree_sitter_json::language(),
             extensions: &["json"],
             parser: Mode::Generic {
+                language: tree_sitter_json::language(),
                 tree_sitter_types: &["string_content"],
             },
         }

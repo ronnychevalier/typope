@@ -5,9 +5,9 @@ impl Language {
     pub fn cpp() -> Self {
         Self {
             name: "cpp",
-            language: tree_sitter_cpp::language(),
             extensions: &["cpp", "cc", "cxx", "hpp", "hh", "hxx"],
             parser: Mode::Generic {
+                language: tree_sitter_cpp::language(),
                 tree_sitter_types: &["string_content"],
             },
         }

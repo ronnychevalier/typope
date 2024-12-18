@@ -5,9 +5,9 @@ impl Language {
     pub fn toml() -> Self {
         Self {
             name: "toml",
-            language: tree_sitter_toml_ng::language(),
             extensions: &["toml"],
             parser: Mode::Generic {
+                language: tree_sitter_toml_ng::language(),
                 tree_sitter_types: &["string"],
             },
         }

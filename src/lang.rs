@@ -83,6 +83,7 @@ type CustomParser = Box<dyn Fn(&[u8]) -> anyhow::Result<Box<dyn Parsed>> + Send 
 enum Mode {
     /// Parse the language using a generic parser that iterates over strings with a given node type
     Generic {
+        language: tree_sitter::Language,
         tree_sitter_types: &'static [&'static str],
     },
 
@@ -91,6 +92,7 @@ enum Mode {
 
     /// Parse the language using a query
     Query {
+        language: tree_sitter::Language,
         query: String,
         ignore_captures: Option<&'static [&'static str]>,
     },
@@ -99,7 +101,6 @@ enum Mode {
 /// Parser for a language to find strings based on its grammar
 pub struct Language {
     name: &'static str,
-    language: tree_sitter::Language,
     extensions: &'static [&'static str],
     parser: Mode,
 }
@@ -157,9 +158,12 @@ impl Language {
     /// Parses the content of a file
     pub fn parse(&self, source: &SharedSource) -> anyhow::Result<Box<dyn Parsed>> {
         match &self.parser {
-            Mode::Generic { tree_sitter_types } => {
+            Mode::Generic {
+                language,
+                tree_sitter_types,
+            } => {
                 let mut parser = Parser::new();
-                parser.set_language(&self.language)?;
+                parser.set_language(language)?;
                 let Some(tree) = parser.parse(source, None) else {
                     anyhow::bail!("Invalid language");
                 };
@@ -171,15 +175,16 @@ impl Language {
             }
             Mode::Custom(parser) => Ok(parser(source.as_ref())?),
             Mode::Query {
+                language,
                 query,
                 ignore_captures,
             } => {
-                let mut parser = Parser::new();
-                parser.set_language(&self.language)?;
+                let mut parser: Parser = Parser::new();
+                parser.set_language(language)?;
                 let Some(tree) = parser.parse(source.as_ref(), None) else {
                     anyhow::bail!("Invalid language");
                 };
-                let query = Query::new(&self.language, query)?;
+                let query = Query::new(language, query)?;
 
                 Ok(Box::new(ParsedQuery {
                     tree,

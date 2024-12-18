@@ -5,9 +5,9 @@ impl Language {
     pub fn yaml() -> Self {
         Self {
             name: "yaml",
-            language: tree_sitter_yaml::language(),
             extensions: &["yml", "yaml"],
             parser: Mode::Generic {
+                language: tree_sitter_yaml::language(),
                 tree_sitter_types: &["double_quote_scalar"],
             },
         }

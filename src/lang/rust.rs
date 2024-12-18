@@ -5,9 +5,9 @@ impl Language {
     pub fn rust() -> Self {
         Self {
             name: "rust",
-            language: tree_sitter_rust::language(),
             extensions: &["rs"],
             parser: Mode::Query {
+                language: tree_sitter_rust::language(),
                 query: "(string_literal (string_content) @strings)+".into(),
                 ignore_captures: None,
             },

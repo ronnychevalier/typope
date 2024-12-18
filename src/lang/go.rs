@@ -5,9 +5,9 @@ impl Language {
     pub fn go() -> Self {
         Self {
             name: "go",
-            language: tree_sitter_go::language(),
             extensions: &["go"],
             parser: Mode::Generic {
+                language: tree_sitter_go::language(),
                 tree_sitter_types: &["interpreted_string_literal"],
             },
         }

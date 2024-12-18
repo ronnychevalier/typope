@@ -105,7 +105,6 @@ impl Language {
     pub fn markdown() -> Self {
         Self {
             name: "markdown",
-            language: tree_sitter_md::language(),
             extensions: &["md"],
             parser: Mode::Custom(Box::new(move |text| {
                 Ok(Box::new(ParsedMarkdown::new(text)?))

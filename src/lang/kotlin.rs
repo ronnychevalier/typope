@@ -5,9 +5,9 @@ impl Language {
     pub fn kotlin() -> Self {
         Self {
             name: "kotlin",
-            language: tree_sitter_kotlin::language(),
             extensions: &["kt"],
             parser: Mode::Generic {
+                language: tree_sitter_kotlin::language(),
                 tree_sitter_types: &["string_content"],
             },
         }
