@@ -356,6 +356,8 @@ impl EngineConfig {
         if let Some(source) = source.check_file {
             self.check_file = Some(source);
         }
+        self.extend_ignore_re
+            .extend_from_slice(&source.extend_ignore_re);
     }
 
     /// Whether to check this file type
@@ -378,6 +380,8 @@ fn find_project_files<'a>(
 mod test {
     use std::path::Path;
 
+    use regex::Regex;
+
     use tempfile::{tempdir, NamedTempFile};
 
     use super::{Config, EngineConfig};
@@ -398,6 +402,15 @@ check-file = false
         std::fs::write(file.path(), config).unwrap();
         let config = Config::from_file(file.path()).unwrap().unwrap();
         assert!(!config.files.ignore_hidden());
+        assert_eq!(
+            config
+                .default
+                .extend_ignore_re
+                .iter()
+                .map(Regex::as_str)
+                .collect::<Vec<_>>(),
+            [Regex::new("some regex.*rrrregex").unwrap().as_str()]
+        );
     }
 
     #[test]
@@ -427,6 +440,15 @@ check-file = false
         std::fs::write(&typos_config_file, config).unwrap();
         let config = Config::from_dir(dir.path()).unwrap().unwrap();
         assert!(!config.files.ignore_hidden());
+        assert_eq!(
+            config
+                .default
+                .extend_ignore_re
+                .iter()
+                .map(Regex::as_str)
+                .collect::<Vec<_>>(),
+            [Regex::new("some regex.*rrrregex").unwrap().as_str()]
+        );
     }
 
     #[test]
@@ -453,6 +475,15 @@ check-file = false
         std::fs::write(&cargo_toml, config).unwrap();
         let config = Config::from_file(&cargo_toml).unwrap().unwrap();
         assert!(!config.files.ignore_hidden());
+        assert_eq!(
+            config
+                .default
+                .extend_ignore_re
+                .iter()
+                .map(Regex::as_str)
+                .collect::<Vec<_>>(),
+            [Regex::new("some regex.*rrrregex").unwrap().as_str()]
+        );
     }
 
     #[test]
