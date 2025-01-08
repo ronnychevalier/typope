@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2025-01-08
+
+### 🐛 Bug Fixes
+
+- *(config)* Load properly `extend-ignore-re` config field
+
+### 🚜 Refactor
+
+- *(lang)* Match files to a lang with globs instead of extensions
+- *(lang)* Use custom parser for `Cargo.toml` files
+
+[0.3.1]: https://github.com/ronnychevalier/typope/compare/v0.3.0..v0.3.1
+
 ## [0.3.0] - 2024-08-24
 
 ### 🚀 Features
