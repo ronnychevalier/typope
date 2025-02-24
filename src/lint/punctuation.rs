@@ -12,7 +12,7 @@ use winnow::ascii::{alphanumeric1, digit1};
 use winnow::combinator::{alt, delimited, not, preceded, repeat, repeat_till, terminated};
 use winnow::error::InputError;
 use winnow::token::{none_of, one_of, take};
-use winnow::{Located, PResult, Parser};
+use winnow::{LocatingSlice, Parser};
 
 use super::{Fix, SharedSource};
 use super::{Rule, Typo};
@@ -76,8 +76,8 @@ impl Rule for Punctuation {
     #[allow(clippy::type_complexity)]
     fn check(&self, bytes: &[u8]) -> Vec<Box<dyn Typo>> {
         fn space_before_colon<'s>(
-            input: &mut Located<&'s [u8]>,
-        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            input: &mut LocatingSlice<&'s [u8]>,
+        ) -> Result<(char, Range<usize>), InputError<LocatingSlice<&'s [u8]>>> {
             let (_space, range) =
                 delimited(none_of([' ', '>']), ' '.with_span(), ':').parse_next(input)?;
 
@@ -89,8 +89,8 @@ impl Rule for Punctuation {
         }
 
         fn space_before_exclamation_mark<'s>(
-            input: &mut Located<&'s [u8]>,
-        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            input: &mut LocatingSlice<&'s [u8]>,
+        ) -> Result<(char, Range<usize>), InputError<LocatingSlice<&'s [u8]>>> {
             let (_space, range) =
                 delimited(none_of([' ', '&', '=', '>', '|']), ' '.with_span(), '!')
                     .parse_next(input)?;
@@ -119,8 +119,8 @@ impl Rule for Punctuation {
         }
 
         fn space_before_question_mark<'s>(
-            input: &mut Located<&'s [u8]>,
-        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            input: &mut LocatingSlice<&'s [u8]>,
+        ) -> Result<(char, Range<usize>), InputError<LocatingSlice<&'s [u8]>>> {
             let (_space, range) =
                 delimited(none_of([' ']), ' '.with_span(), '?').parse_next(input)?;
 
@@ -136,16 +136,16 @@ impl Rule for Punctuation {
         }
 
         fn space_before_char<'s, const C: char>(
-            input: &mut Located<&'s [u8]>,
-        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            input: &mut LocatingSlice<&'s [u8]>,
+        ) -> Result<(char, Range<usize>), InputError<LocatingSlice<&'s [u8]>>> {
             let (_space, range) = terminated(' '.with_span(), C).parse_next(input)?;
 
             Ok((C, range))
         }
 
         fn space_before_punctuation<'s>(
-            input: &mut Located<&'s [u8]>,
-        ) -> PResult<(char, Range<usize>), InputError<Located<&'s [u8]>>> {
+            input: &mut LocatingSlice<&'s [u8]>,
+        ) -> Result<(char, Range<usize>), InputError<LocatingSlice<&'s [u8]>>> {
             alt((
                 space_before_colon,
                 space_before_exclamation_mark,
@@ -157,8 +157,8 @@ impl Rule for Punctuation {
         }
 
         fn locate_space_before_punctuation<'s>(
-            input: &mut Located<&'s [u8]>,
-        ) -> PResult<Box<dyn Typo>, InputError<Located<&'s [u8]>>> {
+            input: &mut LocatingSlice<&'s [u8]>,
+        ) -> Result<Box<dyn Typo>, InputError<LocatingSlice<&'s [u8]>>> {
             let (_, (punctuation_mark, range)): (Vec<u8>, (char, Range<usize>)) = repeat_till(
                 1..,
                 take::<_, _, InputError<_>>(1usize),
@@ -176,7 +176,7 @@ impl Rule for Punctuation {
         }
 
         repeat(0.., locate_space_before_punctuation)
-            .parse_next(&mut Located::new(bytes))
+            .parse_next(&mut LocatingSlice::new(bytes))
             .unwrap_or_default()
     }
 }
