@@ -11,7 +11,7 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use typope::config;
 use typope::config::Config;
 use typope::lang::Language;
-use typope::lint::Linter;
+use typope::lint::{Linter, TypoFixer};
 
 #[derive(Copy, Clone, PartialEq, Eq, clap::ValueEnum, Default)]
 pub enum Format {
@@ -116,11 +116,17 @@ impl Args {
             linter.extend_ignore_re(&config.extend_ignore_re);
 
             let mut stderr = std::io::stderr().lock();
+
+            let mut fixer = None;
+
             linter
                 .iter()
                 .map(|typo| {
                     if self.write_changes {
-                        let _ = typo.fix().apply(file.path());
+                        if let Ok(fixer) = fixer.get_or_insert_with(|| TypoFixer::new(file.path()))
+                        {
+                            let _ = fixer.fix(typo.as_ref());
+                        }
                     }
 
                     let typo: miette::Report = typo.into();

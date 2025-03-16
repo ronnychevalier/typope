@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use miette::{SourceCode, SourceSpan};
 
@@ -25,25 +25,67 @@ pub enum Fix {
     Remove { span: SourceSpan },
 }
 
+pub struct TypoFixer {
+    path: PathBuf,
+    buffer: Vec<u8>,
+    offset: isize,
+}
+
+impl TypoFixer {
+    pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let path = path.as_ref();
+        let buffer = std::fs::read(path)?;
+
+        Ok(Self {
+            path: path.into(),
+            buffer,
+            offset: 0,
+        })
+    }
+
+    pub fn fix(&mut self, typo: &dyn Typo) -> anyhow::Result<()> {
+        self.offset += typo
+            .fix()
+            .apply_with_offset(&mut self.buffer, self.offset)?;
+
+        Ok(())
+    }
+}
+
+impl Drop for TypoFixer {
+    fn drop(&mut self) {
+        let write_changes = || -> anyhow::Result<()> {
+            let mut file = if let Some(parent) = self.path.parent() {
+                tempfile::NamedTempFile::new_in(parent)?
+            } else {
+                tempfile::NamedTempFile::new()?
+            };
+            file.write_all(&self.buffer)?;
+            file.persist(&self.path)?;
+
+            Ok(())
+        };
+
+        let _ = write_changes();
+    }
+}
+
 impl Fix {
-    /// Applies the action on the given file and location
-    pub fn apply(&self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+    /// Applies the action on the given buffer.
+    ///
+    /// Returns the offset that needs to be given to this function for
+    /// the following calls.
+    fn apply_with_offset(&self, buffer: &mut Vec<u8>, offset: isize) -> anyhow::Result<isize> {
         match self {
-            Self::Unknown => Ok(()),
+            Self::Unknown => Ok(0),
             Self::Remove { span } => {
-                let path = path.as_ref();
-                let mut content = std::fs::read(path)?;
-                content.drain(span.offset()..(span.offset() + span.len()));
+                let typo_offset: isize = span.offset().try_into()?;
+                let start: usize = (offset + typo_offset).try_into()?;
+                let end = start + span.len();
 
-                let mut file = if let Some(parent) = path.parent() {
-                    tempfile::NamedTempFile::new_in(parent)?
-                } else {
-                    tempfile::NamedTempFile::new()?
-                };
-                file.write_all(&content)?;
-                file.persist(path)?;
+                buffer.splice(start..end, []);
 
-                Ok(())
+                Ok(-span.len().try_into()?)
             }
         }
     }
@@ -236,8 +278,6 @@ impl miette::Diagnostic for Box<dyn Typo> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, io::Write};
-
     use crate::lint::Language;
 
     use super::{Fix, Linter};
@@ -402,17 +442,46 @@ Hello mate `this should not trigger the rule : foobar` abc
     }
 
     #[test]
-    fn write_changes() {
+    fn apply_with_offset() {
+        let mut content = b"123456".to_vec();
+
         let fix = Fix::Remove {
             span: (1, 2).into(),
         };
+        fix.apply_with_offset(&mut content, 0).unwrap();
+        assert_eq!("1456", String::from_utf8_lossy(&content));
+
+        let fix = Fix::Remove {
+            span: (1, 1).into(),
+        };
+        fix.apply_with_offset(&mut content, 2).unwrap();
+        assert_eq!("145", String::from_utf8_lossy(&content));
+    }
+
+    #[cfg(feature = "lang-markdown")]
+    #[test]
+    fn typo_markdown_apply_multiple_fixes() {
+        use crate::lint::TypoFixer;
+
+        let markdown = r#"This should trigger the rule : foobar This one ! Annnnnd here ??? And !!! what about ! or this! and this ?? "another test with ! in it, but nothing else""#;
+        let markdown_fixed = r#"This should trigger the rule: foobar This one! Annnnnd here??? And!!! what about! or this! and this?? "another test with! in it, but nothing else""#;
         let dir = tempfile::tempdir().unwrap();
-        let file_path = dir.path().join("file.txt");
-        let mut file = File::create(&file_path).unwrap();
-        file.write_all(b"123456").unwrap();
-        drop(file);
-        fix.apply(&file_path).unwrap();
-        assert_eq!(b"1456", std::fs::read(file_path).unwrap().as_slice());
+        let file_path = dir.path().join("file.md");
+        std::fs::write(&file_path, markdown.as_bytes()).unwrap();
+
+        let mut linter = Linter::from_path(&file_path).unwrap().unwrap();
+
+        let typos = linter.iter().collect::<Vec<_>>();
+        assert_eq!(typos.len(), 7);
+
+        let mut fixer = TypoFixer::new(&file_path).unwrap();
+        for typo in typos.into_iter().rev() {
+            fixer.fix(typo.as_ref()).unwrap();
+        }
+
+        drop(fixer);
+
+        assert_eq!(markdown_fixed, std::fs::read_to_string(file_path).unwrap());
     }
 
     #[cfg(feature = "lang-rust")]
