@@ -407,7 +407,7 @@ mod tests {
     #[cfg(feature = "lang-rust")]
     #[test]
     fn typo_rust_doctest() {
-        let rust = r#"
+        let rust = r"
         /// Doc comment
         ///
         /// The example below should not trigger a warning since this is code:
@@ -417,7 +417,7 @@ mod tests {
         fn func() -> bool {
             true
         }
-        "#;
+        ";
         let mut linter = Linter::new(&Language::rust(), rust, "file.rs").unwrap();
 
         let typos = linter.iter().count();
@@ -427,9 +427,9 @@ mod tests {
     #[cfg(feature = "lang-markdown")]
     #[test]
     fn typo_markdown_inline() {
-        let markdown = r#"# Hello
+        let markdown = r"# Hello
 Hello mate `this should not trigger the rule : foobar` abc
-        "#;
+        ";
         let mut linter = Linter::new(
             &Language::markdown(),
             markdown.as_bytes().to_vec(),

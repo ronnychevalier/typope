@@ -139,13 +139,13 @@ mod tests {
 
     #[test]
     fn lintable_strings() {
-        let markdown = r#"# Hello
+        let markdown = r"# Hello
 This is a text `with some` code_span in `various` places
 ```
 what about this
 ```
 hello
-"#;
+";
         let markdown = SharedSource::new("file.md", markdown.as_bytes().to_vec());
         let mut parsed = Language::markdown().parse(&markdown).unwrap();
         let strings = parsed.strings(markdown.as_ref()).collect::<Vec<_>>();
@@ -178,7 +178,7 @@ hello
 
     #[test]
     fn image() {
-        let markdown = r#"abc ![link](link)"#;
+        let markdown = r"abc ![link](link)";
         let markdown = SharedSource::new("file.md", markdown.as_bytes().to_vec());
         let mut parsed = Language::markdown().parse(&markdown).unwrap();
         let strings = parsed.strings(markdown.as_ref()).collect::<Vec<_>>();
@@ -193,14 +193,14 @@ hello
 
     #[test]
     fn block_quote() {
-        let markdown = r#"# Block Quotes
+        let markdown = r"# Block Quotes
 
 > Should not be lintable
 > > This line as well
 > > And this one
 
 Something else `hmm`
-"#;
+";
         let markdown = SharedSource::new("file.md", markdown.as_bytes().to_vec());
         let mut parsed = Language::markdown().parse(&markdown).unwrap();
         let strings = parsed.strings(markdown.as_ref()).collect::<Vec<_>>();

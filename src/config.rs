@@ -498,9 +498,9 @@ check-file = false
 
     #[test]
     fn parse_extend_globs() {
-        let input = r#"[type.po]
+        let input = r"[type.po]
 check-file = true
-"#;
+";
         let mut expected = Config::default();
         expected.type_.patterns.insert(
             "po".into(),
