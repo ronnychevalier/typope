@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-03-21
+
+### 🚀 Features
+
+- Add JavaScript and TypeScript support
+
+### 🐛 Bug Fixes
+
+- `--write-changes`: Support more than one fix in a file
+
+[0.4.0]: https://github.com/ronnychevalier/typope/compare/v0.3.1..v0.4.0
+
 ## [0.3.1] - 2025-01-08
 
 ### 🐛 Bug Fixes
