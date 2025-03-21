@@ -18,6 +18,8 @@ mod cargo_toml;
 mod cpp;
 #[cfg(feature = "lang-go")]
 mod go;
+#[cfg(feature = "lang-javascript")]
+mod javascript;
 #[cfg(feature = "lang-json")]
 mod json;
 #[cfg(feature = "lang-kotlin")]
@@ -30,6 +32,8 @@ mod python;
 mod rust;
 #[cfg(feature = "lang-toml")]
 mod toml;
+#[cfg(feature = "lang-typescript")]
+mod typescript;
 #[cfg(feature = "lang-yaml")]
 mod yaml;
 
@@ -74,6 +78,8 @@ impl Mapping {
         lang!(toml, "lang-toml");
         lang!(yaml, "lang-yaml");
         lang!(json, "lang-json");
+        lang!(javascript, "lang-javascript");
+        lang!(typescript, "lang-typescript");
         lang!(markdown, "lang-markdown");
         // Takes precedence over the generic toml parser, so it needs to be last in the insertion order
         lang!(cargo_toml);

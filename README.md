@@ -66,9 +66,11 @@ the ones irrelevant for `typope` at the moment (e.g., `check-filename`, `extend-
 - Python
 - C++
 - C
+- JavaScript
 - Markdown
 - YAML
 - TOML
+- TypeScript
 - JSON
 
 Many more could be supported if you are motivated to open a PR :)
