@@ -1,11 +1,11 @@
 [package]
 name = "typope"
-edition = "2021"
+edition = "2024"
 description = "Pedantic source code checker for orthotypography mistakes and other typographical errors"
 version = "0.4.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-rust-version = "1.74.0"
+rust-version = "1.87.0"
 categories = ["command-line-utilities", "development-tools", "text-processing"]
 keywords = ["typography", "development", "spelling", "pedantic"]
 include = ["README.md", "CHANGELOG.md", "/src/*", "/LICENSE*"]

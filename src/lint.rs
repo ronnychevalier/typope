@@ -7,8 +7,8 @@ pub mod punctuation;
 
 use self::punctuation::Punctuation;
 
-use crate::lang::{Language, LintableString, Parsed};
 use crate::SharedSource;
+use crate::lang::{Language, LintableString, Parsed};
 
 /// Type that represents a rule that checks for typos
 pub trait Rule {
@@ -284,9 +284,11 @@ mod tests {
 
     #[test]
     fn from_path_unknown_extension() {
-        assert!(Linter::from_path("file.with_unknown_extension")
-            .unwrap()
-            .is_none());
+        assert!(
+            Linter::from_path("file.with_unknown_extension")
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[cfg(feature = "lang-rust")]
@@ -339,11 +341,13 @@ mod tests {
             report.help().unwrap().to_string(),
             "remove the space before `:`"
         );
-        assert!(report
-            .url()
-            .unwrap()
-            .to_string()
-            .starts_with("https://docs.rs"));
+        assert!(
+            report
+                .url()
+                .unwrap()
+                .to_string()
+                .starts_with("https://docs.rs")
+        );
         assert!(report.source_code().is_some());
         assert!(report.diagnostic_source().is_none());
         assert_eq!(report.severity(), None);

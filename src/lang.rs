@@ -7,9 +7,9 @@ use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
 use tree_sitter::{Node, Parser, Query, QueryCursor, StreamingIterator, Tree};
 
+use crate::SharedSource;
 use crate::lock::LazyLock;
 use crate::tree::PreorderTraversal;
-use crate::SharedSource;
 
 #[cfg(feature = "lang-c")]
 mod c;

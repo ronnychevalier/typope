@@ -382,7 +382,7 @@ mod test {
 
     use regex::Regex;
 
-    use tempfile::{tempdir, NamedTempFile};
+    use tempfile::{NamedTempFile, tempdir};
 
     use super::{Config, EngineConfig};
 

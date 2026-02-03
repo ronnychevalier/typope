@@ -325,30 +325,38 @@ mod tests {
 
     #[test]
     fn looks_like_shell() {
-        assert!(Punctuation
-            .check(br"[ ! -e /run/dbus ] || mount -t tmpfs none /run/dbus")
-            .is_empty());
+        assert!(
+            Punctuation
+                .check(br"[ ! -e /run/dbus ] || mount -t tmpfs none /run/dbus")
+                .is_empty()
+        );
     }
 
     #[test]
     fn looks_like_c_macro_generated() {
-        assert!(Punctuation
-            .check(br"#  elif !defined(missing_arch_template)")
-            .is_empty());
+        assert!(
+            Punctuation
+                .check(br"#  elif !defined(missing_arch_template)")
+                .is_empty()
+        );
     }
 
     #[test]
     fn looks_like_url_parameter() {
-        assert!(Punctuation
-            .check(br"Add ?var=1&var2=44 to the URL")
-            .is_empty());
+        assert!(
+            Punctuation
+                .check(br"Add ?var=1&var2=44 to the URL")
+                .is_empty()
+        );
     }
 
     #[test]
     fn sqlite_prepared_statement() {
-        assert!(Punctuation
-            .check(br"SELECT a FROM b WHERE c = ?1 AND d = ?2")
-            .is_empty());
+        assert!(
+            Punctuation
+                .check(br"SELECT a FROM b WHERE c = ?1 AND d = ?2")
+                .is_empty()
+        );
     }
 
     #[test]
@@ -358,8 +366,10 @@ mod tests {
 
     #[test]
     fn condition() {
-        assert!(Punctuation
-            .check(br"a & !b & !c | !z  or !(y | w)")
-            .is_empty());
+        assert!(
+            Punctuation
+                .check(br"a & !b & !c | !z  or !(y | w)")
+                .is_empty()
+        );
     }
 }

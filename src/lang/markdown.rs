@@ -117,8 +117,8 @@ impl Language {
 mod tests {
     use std::ffi::OsStr;
 
-    use crate::lang::LintableString;
     use crate::SharedSource;
+    use crate::lang::LintableString;
 
     use super::Language;
 
