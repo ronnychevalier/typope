@@ -52,7 +52,7 @@ regex = "1.10.5"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_regex = "1.1.0"
 tempfile = "3.10.1"
-thiserror = "1.0.61"
+thiserror = "2.0"
 toml = "0.8.14"
 tree-sitter = "0.26"
 tree-sitter-c = { version = "0.24", optional = true }
