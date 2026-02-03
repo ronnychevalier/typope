@@ -1,0 +1,38 @@
+bin.name = "typope"
+args = "--help"
+stdout = """
+Pedantic source code checker for orthotypography mistakes and other typographical errors
+
+Usage: typope[EXE] [OPTIONS] [PATH]...
+
+Arguments:
+  [PATH]...  Paths to check [default: .]
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+Mode:
+      --files                 Debug: Print each file that would be spellchecked
+      --strings               Debug: Print each string that would be spellchecked
+  -w, --write-changes         Write fixes out
+      --dump-config <OUTPUT>  Write the current configuration to file with `-` for stdout
+      --type-list             Show all supported file types
+
+Output:
+      --sort             Sort results
+      --format <FORMAT>  Render style for messages [default: long] [possible values: long, json]
+
+Config:
+      --exclude <GLOB>    Ignore files and directories matching the glob
+  -H, --hidden            Search hidden files and directories
+  -I, --no-ignore         Don't respect ignore files
+      --no-ignore-dot     Don't respect .ignore files
+      --no-ignore-global  Don't respect global ignore files
+      --no-ignore-parent  Don't respect ignore files in parent directories
+      --no-ignore-vcs     Don't respect ignore files in vcs directories
+"""
+stderr = ""
+
+[env.add]
+COLUMNS = "100"

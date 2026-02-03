@@ -1,0 +1,8 @@
+bin.name = "typope"
+args = "--files --sort"
+stdout = """
+./bar.rs
+./foo.c
+./foofoo/barbar.md
+"""
+stderr = ""

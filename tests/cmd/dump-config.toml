@@ -1,0 +1,19 @@
+bin.name = "typope"
+args = "--dump-config -"
+stdout = """
+[files]
+extend-exclude = []
+ignore-hidden = true
+ignore-files = true
+ignore-dot = true
+ignore-vcs = true
+ignore-global = true
+ignore-parent = true
+
+[default]
+check-file = true
+extend-ignore-re = []
+
+[type]
+"""
+stderr = ""

@@ -1,0 +1,9 @@
+bin.name = "typope"
+args = "--strings --sort"
+stdout = """
+This is a test
+Test
+Hello
+Foobar foofoo bar: bar foo.
+"""
+stderr = ""
