@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 
-use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
+use tree_sitter::{Node, Parser, Query, QueryCursor, StreamingIterator, Tree};
 
 use crate::lock::LazyLock;
 use crate::tree::PreorderTraversal;
@@ -236,28 +236,34 @@ struct ParsedQuery {
 
 impl Parsed for ParsedQuery {
     fn lintable_nodes<'t>(&'t mut self) -> Box<dyn Iterator<Item = LintableNode<'t>> + 't> {
-        let nodes = self
-            .cursor
-            .matches(&self.query, self.tree.root_node(), self.source.as_ref())
-            .flat_map(|m| m.captures.iter())
-            .filter_map(|capture| {
-                if capture.node.byte_range().len() <= 3 {
+        let mut matches =
+            self.cursor
+                .matches(&self.query, self.tree.root_node(), self.source.as_ref());
+
+        let captures = std::iter::from_fn(move || {
+            let m = matches.next()?;
+
+            Some(m.captures.iter())
+        });
+
+        let nodes = captures.flatten().filter_map(|capture| {
+            if capture.node.byte_range().len() <= 3 {
+                return None;
+            }
+
+            if let Some(ignore_captures) = self.ignore_captures {
+                if self.ignored_nodes.contains(&capture.node.id()) {
                     return None;
                 }
-
-                if let Some(ignore_captures) = self.ignore_captures {
-                    if self.ignored_nodes.contains(&capture.node.id()) {
-                        return None;
-                    }
-                    let name = self.query.capture_names().get(capture.index as usize)?;
-                    if ignore_captures.contains(name) {
-                        self.ignored_nodes.insert(capture.node.id());
-                        return None;
-                    }
+                let name = self.query.capture_names().get(capture.index as usize)?;
+                if ignore_captures.contains(name) {
+                    self.ignored_nodes.insert(capture.node.id());
+                    return None;
                 }
+            }
 
-                Some(LintableNode::from(capture.node))
-            });
+            Some(LintableNode::from(capture.node))
+        });
         Box::new(nodes)
     }
 }

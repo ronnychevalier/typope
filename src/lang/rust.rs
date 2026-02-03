@@ -7,7 +7,7 @@ impl Language {
             name: "rust",
             detections: &["*.rs"],
             parser: Mode::Query {
-                language: tree_sitter_rust::language(),
+                language: tree_sitter::Language::new(tree_sitter_rust::LANGUAGE),
                 query: "(string_literal (string_content) @strings)+".into(),
                 ignore_captures: None,
             },

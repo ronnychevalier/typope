@@ -7,7 +7,7 @@ impl Language {
             name: "kotlin",
             detections: &["*.kt", "*.kts"],
             parser: Mode::Generic {
-                language: tree_sitter_kotlin::language(),
+                language: tree_sitter::Language::new(tree_sitter_kotlin_ng::LANGUAGE),
                 tree_sitter_types: &["string_content"],
             },
         }
@@ -73,8 +73,8 @@ fun main() {
                     value: "Hello, World! (".into()
                 },
                 LintableString {
-                    offset: 135,
-                    value: ") ghijkl".into()
+                    offset: 134,
+                    value: "s) ghijkl".into()
                 },
             ]
         );

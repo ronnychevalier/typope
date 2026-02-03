@@ -7,7 +7,7 @@ impl Language {
             name: "c",
             detections: &["*.[chH]", "*.[chH].in"],
             parser: Mode::Generic {
-                language: tree_sitter_c::language(),
+                language: tree_sitter::Language::new(tree_sitter_c::LANGUAGE),
                 tree_sitter_types: &["string_content"],
             },
         }

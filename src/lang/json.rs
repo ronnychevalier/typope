@@ -7,7 +7,7 @@ impl Language {
             name: "json",
             detections: &["*.json"],
             parser: Mode::Generic {
-                language: tree_sitter_json::language(),
+                language: tree_sitter::Language::new(tree_sitter_json::LANGUAGE),
                 tree_sitter_types: &["string_content"],
             },
         }

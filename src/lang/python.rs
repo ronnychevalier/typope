@@ -7,7 +7,7 @@ impl Language {
             name: "python",
             detections: &["*.py"],
             parser: Mode::Query {
-                language: tree_sitter_python::language(),
+                language: tree_sitter::Language::new(tree_sitter_python::LANGUAGE),
                 query: "; Module docstring
 ((module . (expression_statement (string (string_content) @docstrings))))
 

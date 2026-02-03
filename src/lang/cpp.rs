@@ -7,7 +7,7 @@ impl Language {
             name: "cpp",
             detections: &["*.[ch]pp", "*.cc", "*.hh", "*.[ch]xx"],
             parser: Mode::Generic {
-                language: tree_sitter_cpp::language(),
+                language: tree_sitter::Language::new(tree_sitter_cpp::LANGUAGE),
                 tree_sitter_types: &["string_content"],
             },
         }

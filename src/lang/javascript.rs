@@ -7,7 +7,7 @@ impl Language {
             name: "javascript",
             detections: &["*.js"],
             parser: Mode::Generic {
-                language: tree_sitter_javascript::language(),
+                language: tree_sitter::Language::new(tree_sitter_javascript::LANGUAGE),
                 tree_sitter_types: &["string_fragment"],
             },
         }

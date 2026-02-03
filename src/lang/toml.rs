@@ -7,7 +7,7 @@ impl Language {
             name: "toml",
             detections: &["*.toml"],
             parser: Mode::Generic {
-                language: tree_sitter_toml_ng::language(),
+                language: tree_sitter::Language::new(tree_sitter_toml_ng::LANGUAGE),
                 tree_sitter_types: &["string"],
             },
         }

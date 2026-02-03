@@ -7,7 +7,7 @@ impl Language {
             name: "go",
             detections: &["*.go"],
             parser: Mode::Generic {
-                language: tree_sitter_go::language(),
+                language: tree_sitter::Language::new(tree_sitter_go::LANGUAGE),
                 tree_sitter_types: &["interpreted_string_literal"],
             },
         }

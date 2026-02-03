@@ -7,7 +7,7 @@ impl Language {
             name: "typescript",
             detections: &["*.ts"],
             parser: Mode::Generic {
-                language: tree_sitter_typescript::language_typescript(),
+                language: tree_sitter::Language::new(tree_sitter_typescript::LANGUAGE_TYPESCRIPT),
                 tree_sitter_types: &["string_fragment"],
             },
         }

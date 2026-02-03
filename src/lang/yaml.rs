@@ -7,7 +7,7 @@ impl Language {
             name: "yaml",
             detections: &["*.yml", "*.yaml"],
             parser: Mode::Generic {
-                language: tree_sitter_yaml::language(),
+                language: tree_sitter::Language::new(tree_sitter_yaml::LANGUAGE),
                 tree_sitter_types: &["double_quote_scalar"],
             },
         }
