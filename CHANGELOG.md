@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-07-04
+
+- Update dependencies
+
+[0.4.1]: https://github.com/ronnychevalier/typope/compare/v0.4.0..v0.4.1
+
 ## [0.4.0] - 2025-03-21
 
 ### 🚀 Features
