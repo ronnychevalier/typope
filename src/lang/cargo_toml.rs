@@ -77,6 +77,7 @@ impl Language {
 #[cfg(test)]
 mod tests {
     use std::ffi::OsStr;
+    use std::path::Path;
 
     use crate::SharedSource;
     use crate::lang::LintableString;
@@ -100,7 +101,10 @@ mod tests {
 
     #[test]
     fn lintable_strings() {
-        let cargo_toml = include_str!("../../Cargo.toml");
+        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let cargo_toml = std::fs::read_to_string(manifest_dir.join("Cargo.toml.orig"))
+            .or_else(|_| std::fs::read_to_string(manifest_dir.join("Cargo.toml")))
+            .unwrap();
         let toml = SharedSource::new("Cargo.toml", cargo_toml.as_bytes().to_vec());
         let mut parsed = Language::cargo_toml().parse(&toml).unwrap();
         let strings = parsed.strings(toml.as_ref()).collect::<Vec<_>>();
